@@ -1,0 +1,163 @@
+:root {
+    --bg-color: #fcfaf7;
+    --text-color: #555;
+    --pastel-blue: #d6eaf8;
+    --pastel-green: #e9f7ef;
+    --pastel-yellow: #fef9e7;
+    --pastel-red: #fdedec;
+    --pastel-purple: #f5eef8;
+    --primary-soft: #aeb6bf;
+
+    /* Variáveis do Módulo Racionalizar */
+    --border-color: #e2e8f0;
+    --text-main: #1e293b;
+    --dark-accent: #0f172a;
+    --color-capacitacao: #f1f5f9;
+    --color-mudanca: #fffbeb;
+    --color-tecnologia: #eff6ff;
+    --color-implantacao: #f0fdf4;
+    --color-riscos: #fef2f2;
+    --color-metas: #faf5ff;
+}
+
+body {
+    font-family: 'Open Sans', sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    margin: 0;
+    line-height: 1.6;
+}
+
+header {
+    text-align: center;
+    padding: 1rem 1rem;
+    background-color: #ffffff;
+    border-bottom: 1px solid #eee;
+}
+
+header h1 { margin: 0; color: #333; letter-spacing: 2px; }
+header p { margin-top: 0; }
+
+.container {
+    min-width: 600px;
+    max-width: 1000px;
+    margin: auto;
+    padding: 1rem;
+}
+
+.methodology {
+    text-align: center;
+    margin-bottom: 0;
+}
+
+.img-fluid {
+    max-width: 100%;
+    height: auto;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgb(255, 255, 255);
+    padding: 0;
+}
+
+.grid-artifacts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px;
+    margin-top: 2rem;
+}
+
+.card {
+    background: white;
+    padding: 1rem;
+    border-radius: 15px;
+    text-align: center;
+    transition: transform 0.3s ease;
+    border: 1px solid #f0f0f0;
+    min-width: 180px;
+    width: 180px;
+    box-sizing: border-box;
+}
+
+.card p {
+    font-size: 0.75rem;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+}
+
+/* Cores pastéis específicas para cada card baseado no PDRIM */
+.card[data-step="P"] { border-top: 8px solid #5dade2; }
+.card[data-step="D"] { border-top: 8px solid #58d68d; }
+.card[data-step="R"] { border-top: 8px solid #f4d03f; }
+.card[data-step="I"] { border-top: 8px solid #ec7063; }
+.card[data-step="M"] { border-top: 8px solid #af7ac5; }
+
+.card[data-step="P"] .custom-icon { fill: #5dade2; }
+.card[data-step="D"] .custom-icon { fill: #58d68d; }
+.card[data-step="R"] .custom-icon { fill: #f4d03f; }
+.card[data-step="I"] .custom-icon { fill: #ec7063; }
+.card[data-step="M"] .custom-icon { fill: #af7ac5; }
+
+.custom-icon {
+    width: 80px;
+    height: 80px;
+    display: flex;
+    /*
+     border: 1px solid #3c5064;
+     border-radius: 10%;
+    */
+    margin: 0 auto 0 auto;
+}
+
+.custom-icon:hover {
+    /* transform: scale(1.1); */
+    fill: #000; /* Cor de destaque ao passar o mouse */
+}
+
+.card-links {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 1.5rem;
+    gap: 2px;
+    flex-wrap: wrap;
+}
+
+.card-links .btn {
+    margin-top: 0;
+    font-size: 0.6rem;
+    padding: 0.4rem 0.4rem;
+}
+
+.btn {
+    display: inline-block;
+    margin-top: 1rem;
+    padding: 0.6rem 1.2rem;
+    background-color: #f0f0f0;
+    color: #666;
+    text-decoration: none;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    transition: background 0.3s;
+}
+
+.btn:hover {
+    background-color: var(--primary-soft);
+    color: white;
+}
+
+/* Estilo para links inativos (sem href válido) */
+.btn[href="#"],
+.btn[href=""],
+.btn:not([href]) {
+    background-color: #fafafa;
+    color: #cccccc;
+    pointer-events: none; /* Impede o clique e o hover */
+}
+
+footer {
+    text-align: center;
+    padding: 2rem;
+    font-size: 0.8rem;
+    color: #999;
+}
