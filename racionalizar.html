@@ -11,50 +11,24 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
-
-    <header>
-        <h1>PDRIM: GUIA R-BPM</h1>
-        <p>Fase 3: Racionalizar - Planejamento da Solução</p>
-    </header>
-
-    <nav class="page-navigation">
-        <a href="index.html" class="btn-nav">Página Inicial</a>
-        <a href="#" class="btn-nav disabled">&laquo; Anterior (Descobrir)</a>
-        <a href="racionalizar.html" class="btn-nav active">Atual (Racionalizar)</a>
-        <a href="#" class="btn-nav disabled">Próximo (Implementar) &raquo;</a>
+    <nav class="breadcrumbs">
+        <a href="index.html">Página Inicial</a>
+        <span class="separator">&gt;</span>
+        <a href="preparar.html">Preparar</a>
+        <span class="separator">&gt;</span>
+        <a href="descobrir.html">Descobrir</a>
+        <span class="separator">&gt;</span>
+        <span>Racionalizar</span>
+        <span class="separator">&gt;</span>
+        <a href="implementar.html">Implementar</a>
+        <span class="separator">&gt;</span>
+        <a href="monitorar.html">Monitorar</a>
     </nav>
 
-    <main class="main-wrapper">
-    <div class="content-box" id="formContainer">
-        <label id="formTitle" style="font-size: 1.1rem; color: var(--dark-accent); margin-bottom: 15px; font-weight: 800;">Ação Racionalizada</label>
-        <form id="pdrimForm">
-            <input type="hidden" id="editId">
-            <div class="form-row-1">
-                <div><label>Título da Ação</label><input type="text" id="title" required></div>
-                <div><label>Categoria</label>
-                    <select id="cat" required>
-                        <option value="Capacitação">Capacitação</option>
-                        <option value="Gestão da Mudança">Gestão da Mudança</option>
-                        <option value="Tecnologia">Tecnologia</option>
-                        <option value="Implantação">Implantação</option>
-                        <option value="Definição de Riscos">Definição de Riscos</option>
-                        <option value="Tratamento de Riscos">Tratamento de Riscos</option>
-                        <option value="Metas e Indicadores">Metas e Indicadores</option>
-                    </select>
-                </div>
-                <div><label>Início</label><input type="date" id="start" required></div>
-                <div><label>Fim</label><input type="date" id="end" required></div>
-            </div>
-            <div id="editor-wrapper"><div id="editor-container"></div></div>
-            <div class="button-group">
-                <button type="submit" class="btn-main">Salvar Ação</button>
-                <button type="button" class="btn-main btn-cancel" onclick="resetForm()">Cancelar</button>
-            </div>
-        </form>
-    </div>
-
-    <div class="content-box" id="capture-area">
-        <div class="timeline-controls" id="non-printable-controls">
+    <header>
+        <h1>PDRIM: Canvas Racionalizar</h1>
+        <p>Etapa 3: Planejamento das etapas da solução.</p>
+        <div class="header-controls no-print" id="non-printable-controls">
             <div class="control-group">
                 <label>Filtro</label>
                 <select id="filter" onchange="render()"><option value="all">Todas as Categorias</option></select>
@@ -72,7 +46,51 @@
                 </div>
             </div>
         </div>
-        
+    </header>
+
+    <main class="racionalizar">
+    <div id="formContainer" class="content-box no-print">
+        <h2 id="formTitle" style="margin-top: 0; font-size: 1.2rem; color: var(--dark-accent);">Nova Ação</h2>
+        <form id="pdrimForm">
+            <input type="hidden" id="editId">
+            <div class="form-row-1">
+                <div>
+                    <label for="title">Título da Ação</label>
+                    <input type="text" id="title" placeholder="Descreva a ação..." required>
+                </div>
+                <div>
+                    <label for="cat">Categoria</label>
+                    <select id="cat" required>
+                        <option value="Capacitação">Capacitação</option>
+                        <option value="Gestão da Mudança">Gestão da Mudança</option>
+                        <option value="Tecnologia">Tecnologia</option>
+                        <option value="Implantação">Implantação</option>
+                        <option value="Definição de Riscos">Definição de Riscos</option>
+                        <option value="Tratamento de Riscos">Tratamento de Riscos</option>
+                        <option value="Metas e Indicadores">Metas e Indicadores</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="start">Início</label>
+                    <input type="date" id="start" required>
+                </div>
+                <div>
+                    <label for="end">Fim</label>
+                    <input type="date" id="end" required>
+                </div>
+            </div>
+            <label>Descrição Detalhada</label>
+            <div id="editor-wrapper">
+                <div id="editor-container"></div>
+            </div>
+            <div class="button-group" style="margin-top: 15px;">
+                <button type="submit" class="btn-main">SALVAR AÇÃO</button>
+                <button type="button" class="btn-main btn-cancel" onclick="document.getElementById('formContainer').style.display = 'none'">CANCELAR</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="content-box" id="capture-area">
         <input type="file" id="import-file" accept=".json" style="display: none;" onchange="importJSON(this)">
         <div class="bulk-actions" id="bulkActions">
             <button class="btn-main btn-secondary" onclick="selectAll(true)">Selecionar Todos</button>

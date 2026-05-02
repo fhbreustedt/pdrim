@@ -29,7 +29,7 @@ function initUI() {
     });
 }
 
-function openNewForm() { resetForm(); document.getElementById('formContainer').style.display = 'block'; window.scrollTo(0,0); }
+function openNewForm() { resetForm(); document.getElementById('formTitle').innerText = 'Nova Ação'; document.getElementById('formContainer').style.display = 'block'; window.scrollTo(0,0); }
 function resetForm() { document.getElementById('formContainer').style.display = 'none'; document.getElementById('pdrimForm').reset(); document.getElementById('editId').value = ''; quill.setContents([]); }
 
 function editAction(id) {
