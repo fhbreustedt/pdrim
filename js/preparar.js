@@ -180,21 +180,22 @@ function toggleEdit(id, forceClose = false) {
 
     let stateChanged = false;
 
-    // Se estivermos fechando o formulário, redefinir qualquer estado de edição ativo para essa seção
-    if (!isOpening) {
-        if (editState[pref] !== undefined && editState[pref] >= 0) {
+    // Redefinir formulários e limpar contexto de edição ao fechar ou reabrir livremente
+    if (!isOpening || editState[pref] === -1 || editState[pref] === undefined) {
+        if (!isOpening && editState[pref] !== undefined && editState[pref] >= 0) {
             editState[pref] = -1;
             stateChanged = true;
-            
-            const btn = document.querySelector(`#${id} button[onclick="addItem('${secForAddItem}', '${pref}')"]`);
-            if (btn) {
-                btn.innerText = 'Add';
-                const cancelBtn = btn.parentElement.querySelector('.btn-cancel-edit');
-                if (cancelBtn) cancelBtn.style.display = 'none';
-            }
         }
+
+        const btn = document.querySelector(`#${id} button[onclick="addItem('${secForAddItem}', '${pref}')"]`);
+        if (btn) {
+            btn.innerText = 'Add';
+            const cancelBtn = btn.parentElement.querySelector('.btn-cancel-edit');
+            if (cancelBtn) cancelBtn.style.display = 'none';
+        }
+
         boxes.forEach(box => {
-            const inputs = box.querySelectorAll('input, select');
+            const inputs = box.querySelectorAll('input, select, textarea');
             inputs.forEach(el => {
                 if (el.type === 'checkbox') el.checked = false;
                 else if (el.id === 's1_custom_phrase') el.value = db.s1_phrase || 'Mitigar {{dores}} para viabilizar {{necessidades}}.';
@@ -204,26 +205,6 @@ function toggleEdit(id, forceClose = false) {
         });
         if (id === 'sec4') toggleS4Input();
         if (id === 'sec5') toggleS5Icon();
-    } else {
-        if (editState[pref] === -1 || editState[pref] === undefined) {
-            const btn = document.querySelector(`#${id} button[onclick="addItem('${secForAddItem}', '${pref}')"]`);
-            if (btn) {
-                btn.innerText = 'Add';
-                const cancelBtn = btn.parentElement.querySelector('.btn-cancel-edit');
-                if (cancelBtn) cancelBtn.style.display = 'none';
-            }
-            boxes.forEach(box => {
-                const inputs = box.querySelectorAll('input, select');
-                inputs.forEach(el => {
-                    if (el.type === 'checkbox') el.checked = false;
-                    else if (el.id === 's1_custom_phrase') el.value = db.s1_phrase || 'Mitigar {{dores}} para viabilizar {{necessidades}}.';
-                    else if (el.id === 'process_name') el.value = db.processName || '';
-                    else el.value = '';
-                });
-            });
-            if (id === 'sec4') toggleS4Input();
-            if (id === 'sec5') toggleS5Icon();
-        }
     }
 
     if (stateChanged) render();
@@ -247,7 +228,7 @@ function toggleStkDetails() {
     }
 }
 
-let currentS3View = 'category';
+let currentS3View = 'type';
 function switchS3View(view) {
     currentS3View = view;
     render();
@@ -407,21 +388,7 @@ function addItem(sec, pref) {
         });
 
         // Oculta o formulário após salvar a edição e zera a visualização
-        const sectionElement = document.getElementById(sec === 'sec2' && pref === 's0' ? 'sec0' : sec);
-        if (sectionElement) {
-            const valInput = document.getElementById(pref + '_val');
-            const formBox = valInput ? valInput.closest('.form-box') : sectionElement.querySelector('.form-box');
-            if (formBox) {
-                formBox.style.display = 'none';
-                const inputs = formBox.querySelectorAll('input, select');
-                inputs.forEach(el => {
-                    if (el.type === 'checkbox') el.checked = false;
-                    else el.value = '';
-                });
-                updateSectionState(sectionElement);
-                sectionElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
-        }
+        closeForm(sec, pref);
     } else {
         db[sec].push(newItem);
     }
@@ -439,13 +406,24 @@ function remove(sec, idx) { db[sec].splice(idx, 1); render(); save(); }
 
 function cancelEdit(sec, pref) {
     editState[pref] = -1;
+    closeForm(sec, pref);
+    const btnObjs = document.querySelectorAll(`button[onclick="addItem('${sec}', '${pref}')"]`);
+    btnObjs.forEach(b => {
+        b.innerText = 'Add';
+        const cancelBtn = b.parentElement.querySelector('.btn-cancel-edit');
+        if (cancelBtn) cancelBtn.style.display = 'none';
+    });
+    render();
+}
+
+function closeForm(sec, pref) {
     const sectionElement = document.getElementById(sec === 'sec2' && pref === 's0' ? 'sec0' : sec);
     if (sectionElement) {
         const valInput = document.getElementById(pref + '_val');
         const formBox = valInput ? valInput.closest('.form-box') : sectionElement.querySelector('.form-box');
         if (formBox) {
             formBox.style.display = 'none';
-            const inputs = formBox.querySelectorAll('input, select');
+            const inputs = formBox.querySelectorAll('input, select, textarea');
             inputs.forEach(el => {
                 if (el.type === 'checkbox') el.checked = false;
                 else el.value = '';
@@ -454,13 +432,6 @@ function cancelEdit(sec, pref) {
         updateSectionState(sectionElement);
         sectionElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
-    const btnObjs = document.querySelectorAll(`button[onclick="addItem('${sec}', '${pref}')"]`);
-    btnObjs.forEach(b => {
-        b.innerText = 'Add';
-        const cancelBtn = b.parentElement.querySelector('.btn-cancel-edit');
-        if (cancelBtn) cancelBtn.style.display = 'none';
-    });
-    render();
 }
 
 function editItem(sec, idx, pref) {
@@ -547,6 +518,20 @@ function render() {
         </div>`;
     }
 
+    function makeBadge(it, sec, pref, title = '') {
+        const idx = db[sec].indexOf(it);
+        const isEditing = (editState[pref] === idx);
+        const editClass = isEditing ? 'editing-card' : '';
+        const titleAttr = title ? `title="${title}"` : '';
+        return `<div class="hover-trigger ${editClass}" style="box-shadow: 0 1px 2px rgba(0,0,0,0.05); background: #ffffff; color: #475569; padding: 3px 10px; border-radius: 12px; font-size: 0.7rem; font-weight: 600; display: inline-flex; align-items: center; border: 1px solid #e2e8f0; word-break: break-word;" ${titleAttr}>
+            ${it.val}
+            <span class="no-print hover-target" style="top: -8px; right: -8px; padding: 2px 4px; gap: 4px;">
+                <span style="cursor:pointer; color:#0284c7; font-size: 0.8rem; line-height: 1;" onclick="editItem('${sec}',${idx},'${pref}')" title="Editar">✎</span>
+                <span style="cursor:pointer; color:#ef4444; font-size: 0.8rem; line-height: 1;" onclick="remove('${sec}',${idx})" title="Excluir">✕</span>
+            </span>
+        </div>`;
+    }
+
     // SEÇÃO 1
     db.sec1.forEach((it) => {
         const h = makeCard(it, 'sec1', 's1');
@@ -611,20 +596,7 @@ function render() {
         let html = `<div>
             <div style="font-size: 0.65rem; color: #64748b; font-weight: 700; text-transform: uppercase; margin-bottom: 6px;">${stkLabels[cat]}</div>
             <div style="display: flex; flex-wrap: wrap; gap: 6px;">`;
-        items.forEach(it => {
-            const idx = db.sec2.indexOf(it);
-            const isEditing = (editState['s0'] === idx);
-            const editClass = isEditing ? 'editing-card' : '';
-            const bg = '#ffffff', color = '#475569', border = '#e2e8f0';
-            
-            html += `<div class="hover-trigger ${editClass}" style="box-shadow: 0 1px 2px rgba(0,0,0,0.05); background: ${bg}; color: ${color}; padding: 3px 10px; border-radius: 12px; font-size: 0.7rem; font-weight: 600; display: inline-flex; align-items: center; border: 1px solid ${border};" title="${STK_MAP[it.cat]}">
-                ${it.val} 
-                    <span class="no-print hover-target" style="top: -8px; right: -8px; padding: 2px 4px; gap: 4px;">
-                        <span style="cursor:pointer; color:#0284c7; font-size: 0.8rem; line-height: 1;" onclick="editItem('sec2',${db.sec2.indexOf(it)},'s0')" title="Editar">✎</span>
-                        <span style="cursor:pointer; color:#ef4444; font-size: 0.8rem; line-height: 1;" onclick="remove('sec2',${db.sec2.indexOf(it)})" title="Excluir">✕</span>
-                    </span>
-            </div>`;
-        });
+        html += items.map(it => makeBadge(it, 'sec2', 's0', STK_MAP[it.cat])).join('');
         html += `</div></div>`;
         return html;
     }
@@ -633,20 +605,7 @@ function render() {
         let simpleHtml = '';
         ['DONO', 'GEST', 'TIC', 'EXEC'].forEach(cat => {
             const items = db.sec2.filter(it => it.cat === cat);
-            items.forEach(it => {
-                const idx = db.sec2.indexOf(it);
-                const isEditing = (editState['s0'] === idx);
-                const editClass = isEditing ? 'editing-card' : '';
-                const bg = '#ffffff', color = '#475569', border = '#e2e8f0';
-                
-                simpleHtml += `<div class="hover-trigger ${editClass}" style="box-shadow: 0 1px 2px rgba(0,0,0,0.05); background: ${bg}; color: ${color}; padding: 3px 10px; border-radius: 12px; font-size: 0.7rem; font-weight: 600; display: inline-flex; align-items: center; border: 1px solid ${border};" title="${STK_MAP[it.cat]}">
-                    ${it.val} 
-                    <span class="no-print hover-target" style="top: -8px; right: -8px; padding: 2px 4px; gap: 4px;">
-                        <span style="cursor:pointer; color:#0284c7; font-size: 0.8rem; line-height: 1;" onclick="editItem('sec2',${idx},'s0')" title="Editar">✎</span>
-                        <span style="cursor:pointer; color:#ef4444; font-size: 0.8rem; line-height: 1;" onclick="remove('sec2',${idx})" title="Excluir">✕</span>
-                    </span>
-                </div>`;
-            });
+            simpleHtml += items.map(it => makeBadge(it, 'sec2', 's0', STK_MAP[it.cat])).join('');
         });
         dispStkSimple.innerHTML = simpleHtml;
     }
@@ -666,19 +625,7 @@ function render() {
 
     const facilItems = db.sec2.filter(it => it.cat === 'FACIL');
     if (dispStkFacil) {
-        let html = '';
-        facilItems.forEach(it => {
-            const idx = db.sec2.indexOf(it);
-            const isEditing = (editState['s0'] === idx);
-            const editClass = isEditing ? 'editing-card' : '';
-            html += `<div class="hover-trigger ${editClass}" style="box-shadow: 0 1px 2px rgba(0,0,0,0.05); background: #ffffff; color: #475569; padding: 3px 10px; border-radius: 12px; font-size: 0.7rem; font-weight: 600; display: inline-flex; align-items: center; border: 1px solid #e2e8f0;" title="${STK_MAP[it.cat]}">
-                ${it.val} 
-                <span class="no-print hover-target" style="top: -8px; right: -8px; padding: 2px 4px; gap: 4px;">
-                    <span style="cursor:pointer; color:#0284c7; font-size: 0.8rem; line-height: 1;" onclick="editItem('sec2',${db.sec2.indexOf(it)},'s0')" title="Editar">✎</span>
-                    <span style="cursor:pointer; color:#ef4444; font-size: 0.8rem; line-height: 1;" onclick="remove('sec2',${db.sec2.indexOf(it)})" title="Excluir">✕</span>
-                </span>
-            </div>`;
-        });
+        let html = facilItems.map(it => makeBadge(it, 'sec2', 's0', STK_MAP[it.cat])).join('');
         dispStkFacil.innerHTML = html || '<span class="empty-msg" style="text-transform:lowercase">não definido</span>';
     }
 
@@ -692,7 +639,7 @@ function render() {
     if (swotItems.length === 0) {
         htmlSwotTable += `<tr><td colspan="4" class="empty-state" style="text-align:center">Sem itens SWOT cadastrados</td></tr>`;
     } else {
-        const swotMap = { 'S': {n: 'Força', t: 'Interno (+)'}, 'W': {n: 'Fraqueza', t: 'Interno (-)'}, 'O': {n: 'Oportunidade', t: 'Externo (+)'}, 'T': {n: 'Ameaça', t: 'Externo (-)'} };
+        const swotMap = { 'S': {n: 'Força', t: 'Interno'}, 'W': {n: 'Fraqueza', t: 'Interno'}, 'O': {n: 'Oportunidade', t: 'Externo'}, 'T': {n: 'Ameaça', t: 'Externo'} };
         swotItems.forEach((it) => {
             const idx = db.sec2.indexOf(it);
             const isEditing = (editState['s2'] === idx);
@@ -723,22 +670,6 @@ function render() {
         btnType.classList.toggle('active', currentS3View === 'type');
     }
 
-    function makeSec3Badge(it) {
-        const idx = db.sec3.indexOf(it);
-        const isEditing = (editState['s3'] === idx);
-        const editClass = isEditing ? 'editing-card' : '';
-        
-        const bg = '#ffffff', color = '#475569', border = '#e2e8f0';
-
-        return `<div class="hover-trigger ${editClass}" style="box-shadow: 0 1px 2px rgba(0,0,0,0.05); background: ${bg}; color: ${color}; padding: 3px 10px; border-radius: 12px; font-size: 0.7rem; font-weight: 600; display: inline-flex; align-items: center; border: 1px solid ${border}; word-break: break-word;">
-            ${it.val}
-            <span class="no-print hover-target" style="top: -8px; right: -8px; padding: 2px 4px; gap: 4px;">
-                <span style="cursor:pointer; color:#0284c7; font-size: 0.8rem; line-height: 1;" onclick="editItem('sec3',${idx},'s3')" title="Editar">✎</span>
-                <span style="cursor:pointer; color:#ef4444; font-size: 0.8rem; line-height: 1;" onclick="remove('sec3',${idx})" title="Excluir">✕</span>
-            </span>
-        </div>`;
-    }
-
     let sec3Html = `<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; width: 100%;">`;
 
     if (currentS3View === 'category') {
@@ -755,19 +686,19 @@ function render() {
             if (inItems.length > 0) {
                 cardHtml += `<div>
                     <div style="font-size: 0.7rem; color: #64748b; font-weight: 700; text-transform: uppercase; margin-bottom: 6px; border-bottom: 1px dashed #cbd5e1; padding-bottom: 4px;">✅ Inclusões</div>
-                    <div style="display: flex; flex-wrap: wrap; gap: 6px; padding: 0 10px;">${inItems.map(makeSec3Badge).join('')}</div>
+                    <div style="display: flex; flex-wrap: wrap; gap: 6px; padding: 0 10px;">${inItems.map(it => makeBadge(it, 'sec3', 's3')).join('')}</div>
                 </div>`;
             }
             if (outItems.length > 0) {
                 cardHtml += `<div>
                     <div style="font-size: 0.7rem; color: #64748b; font-weight: 700; text-transform: uppercase; margin-bottom: 6px; border-bottom: 1px dashed #cbd5e1; padding-bottom: 4px;">❌ Exclusões</div>
-                    <div style="display: flex; flex-wrap: wrap; gap: 6px; padding: 0 10px;">${outItems.map(makeSec3Badge).join('')}</div>
+                    <div style="display: flex; flex-wrap: wrap; gap: 6px; padding: 0 10px;">${outItems.map(it => makeBadge(it, 'sec3', 's3')).join('')}</div>
                 </div>`;
             }
             if (resItems.length > 0) {
                 cardHtml += `<div>
                     <div style="font-size: 0.7rem; color: #64748b; font-weight: 700; text-transform: uppercase; margin-bottom: 6px; border-bottom: 1px dashed #cbd5e1; padding-bottom: 4px;">🛠️ Recursos</div>
-                    <div style="display: flex; flex-wrap: wrap; gap: 6px; padding: 0 10px;">${resItems.map(makeSec3Badge).join('')}</div>
+                    <div style="display: flex; flex-wrap: wrap; gap: 6px; padding: 0 10px;">${resItems.map(it => makeBadge(it, 'sec3', 's3')).join('')}</div>
                 </div>`;
             }
 
@@ -792,7 +723,7 @@ function render() {
                 const itemsOfCat = itemsOfType.filter(it => it.cat === c);
                 cardHtml += `<div>
                     <div style="font-size: 0.7rem; color: #64748b; font-weight: 700; text-transform: uppercase; margin-bottom: 6px; border-bottom: 1px dashed #cbd5e1; padding-bottom: 4px;">${CAT_MAP[c]||c}</div>
-                    <div style="display: flex; flex-wrap: wrap; gap: 6px; padding: 0 10px;">${itemsOfCat.map(makeSec3Badge).join('')}</div>
+                    <div style="display: flex; flex-wrap: wrap; gap: 6px; padding: 0 10px;">${itemsOfCat.map(it => makeBadge(it, 'sec3', 's3')).join('')}</div>
                 </div>`;
             });
 

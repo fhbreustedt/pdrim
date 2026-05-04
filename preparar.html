@@ -19,7 +19,7 @@
         <a href="monitorar.html" class="bc-step">Monitorar</a>
     </nav>
     <header>
-        <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 15px;">
+        <div class="header-title-container">
             <div>
                 <h1>PDRIM: Canvas Preparar</h1>
                 <p>Etapa 1: Documentação inicial e definição de escopo.</p>
@@ -33,7 +33,7 @@
         <div class="button-group">
             <input type="file" id="importFile" style="display:none" onchange="importJSON(event)">
             <div class="dropdown">
-                <button class="btn-main btn-secondary" onclick="toggleDropdown(event)">OUTRAS AÇÕES</button>
+                <button class="btn-main btn-secondary" onclick="toggleDropdown(event)">+ AÇÕES</button>
                 <div class="dropdown-content" id="otherActionsDropdown">
                     <a href="#" onclick="document.getElementById('importFile').click(); return false;">Importar</a>
                     <a href="#" onclick="exportJSON(); return false;">Exportar</a>
@@ -44,33 +44,33 @@
         </div>
     </div>
     <div class="canvas-grid">        
-        <section class="section full-width" id="sec0" style="display: flex; flex-direction: column; background: #ffffff; border-top: 4px solid var(--primary);">
-            <div class="section-title" style="margin-bottom: 15px; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px;">Identificação do Processo <button class="btn-edit-action no-print" onclick="toggleEdit('sec0')">Editar</button></div>
+        <section class="section full-width" id="sec0">
+            <div class="section-title" style="margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">Identificação do Processo <button class="btn-edit-action no-print" onclick="toggleEdit('sec0')">Editar</button></div>
             <div style="display: flex; justify-content: space-between; align-items: flex-start; width: 100%;">
-                <div style="flex:1; padding-right: 20px;">
-                <b style="font-size:0.65rem; color:#64748b; text-transform:uppercase">Nome do Processo / Iniciativa</b>
+                <div style="flex: 1; padding-right: 20px;">
+                <b class="field-label">Nome do Processo / Iniciativa</b>
+                <h2 id="disp_process_name" class="hover-trigger" style="margin: 0 0 15px 0; font-size: 1.4rem; color: var(--primary); display: block;">Processo Não Definido</h2>
                 <div class="form-box no-print" id="form_process_name" style="margin-top: 10px; display: none;">
-                    <div class="input-row" style="margin-bottom:0;">
-                        <input type="text" id="process_name" placeholder="Digite o nome do processo..." style="flex:1">
+                    <div class="input-row" style="margin-bottom: 0;">
+                        <input type="text" id="process_name" placeholder="Digite o nome do processo..." style="flex: 1;">
                         <button class="btn-main" onclick="saveProcessName()">Salvar</button>
                         <button class="btn-main btn-cancel" onclick="cancelProcessName()">Cancelar</button>
                     </div>
                 </div>
-                <h2 id="disp_process_name" class="hover-trigger" style="margin: 5px 0 15px 0; font-size: 1.4rem; color: var(--primary); display: inline-block; padding-right: 35px;">Processo Não Definido</h2>
                 
                 <div class="form-box no-print" id="form_s0_items" style="margin-top: 10px; display: none;">
-                    <b style="font-size:0.65rem; color:#64748b; text-transform:uppercase; margin-bottom: 8px; display: block;">Adicionar Parte Interessada</b>
-                    <div class="input-row" style="margin-bottom:0;">
+                    <b class="field-label">Adicionar Parte Interessada</b>
+                    <div class="input-row" style="margin-bottom: 0;">
                         <select id="s0_cat">
                             <option value="DONO">Dono do Processo</option><option value="GEST">Gestor do Processo</option>
                             <option value="FACIL">Facilitador</option><option value="EXEC">Executor do Processo</option><option value="TIC">Membro de TIC</option>
                         </select>
-                        <input type="text" id="s0_val" placeholder="Nome ou papel..." style="flex:1">
+                        <input type="text" id="s0_val" placeholder="Nome ou papel..." style="flex: 1;">
                         <button class="btn-main" onclick="addItem('sec2', 's0')">Add</button>
                     </div>
                 </div>
                 </div>
-                <div style="text-align:right; margin-left: 20px; display: flex; flex-direction: column; align-items: flex-end; gap: 15px;">
+                <div style="text-align: right; margin-left: 20px; display: flex; flex-direction: column; align-items: flex-end; gap: 15px;">
                     <div class="total-box" style="font-size: 1rem; padding: 15px 30px; margin: 0; display: flex; flex-direction: column; align-items: center; min-width: 220px;">
                         <div>Tempo Total: <span id="total_init">0</span> Dias</div>
                         <div style="margin-top: 10px; font-size: 0.65rem; color: #64748b; text-transform: uppercase; margin-bottom: 5px; font-weight: 700;">Facilitador(es)</div>
@@ -79,8 +79,9 @@
                 </div>
             </div>
             <div style="width: 100%; border-top: 1px solid #e2e8f0; padding-top: 15px; margin-top: 5px;">
-                <div style="margin-bottom: 12px; cursor: pointer; display: inline-block;" onclick="toggleStkDetails()">
-                    <b style="font-size:0.65rem; color:#94a3b8; text-transform:uppercase; user-select: none;">Partes Interessadas <span id="btn_toggle_stk" class="no-print">(Ver detalhes)</span></b>
+                <div class="stk-details-toggle" onclick="toggleStkDetails()">
+                    <b class="field-label-light mb-0" style="user-select: none; display: inline-block; margin-right: 4px;">Partes Interessadas</b>
+                    <span id="btn_toggle_stk" class="no-print action-link" style="font-size: 0.7rem; text-transform: none; color: var(--accent); text-decoration: underline; cursor: pointer;">(Ver detalhes)</span>
                 </div>
                 <div id="disp_stk_simple" style="display: flex; flex-wrap: wrap; gap: 6px;"></div>
                 <div id="disp_stk_main" style="display: none; grid-template-columns: 1fr 1fr 1fr; gap: 0; width: 100%; align-items: start;"></div>
@@ -92,21 +93,23 @@
             <div class="form-box" id="form_s1_items">
                 <div class="input-row">
                     <select id="s1_cat"><option value="OBJ">Objetivo</option><option value="DOR">Dor</option><option value="NEC">Necessidade</option></select>
-                    <input type="text" id="s1_val" placeholder="Descrição do item..." style="flex:1">
+                    <input type="text" id="s1_val" placeholder="Descrição do item..." style="flex: 1;">
                     <button class="btn-main" onclick="addItem('sec1', 's1')">Add</button>
                 </div>
             </div>
             <div class="form-box" id="form_s1_phrase">
-                <b style="font-size:0.65rem; color:#64748b; text-transform:uppercase; margin-bottom: 8px; display: block;">Proposta de Valor Customizada</b>
-                <div class="input-row" style="margin-bottom:0;">
-                    <input type="text" id="s1_custom_phrase" placeholder="Ex: Mitigar {{dores}} para viabilizar {{necessidades}}." style="flex:1">
-                    <button class="btn-main" onclick="saveS1Phrase()">Salvar</button>
-                    <button class="btn-main btn-cancel" onclick="resetS1Phrase()">Padrão</button>
-                    <button class="btn-main btn-secondary" onclick="toggleVarHelp()">Ajuda</button>
-                    <button class="btn-main btn-cancel" onclick="cancelS1Phrase()">Cancelar</button>
+                <b class="field-label">Proposta de Valor Customizada</b>
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                    <textarea id="s1_custom_phrase" placeholder="Ex: Mitigar {{dores}} para viabilizar {{necessidades}}." style="width: 100%; min-height: 60px; box-sizing: border-box;"></textarea>
+                    <div class="input-row" style="margin-bottom: 0;">
+                        <button class="btn-main" onclick="saveS1Phrase()">Salvar</button>
+                        <button class="btn-main btn-cancel" onclick="resetS1Phrase()">Padrão</button>
+                        <button class="btn-main btn-secondary" onclick="toggleVarHelp()">Ajuda</button>
+                        <button class="btn-main btn-cancel" onclick="cancelS1Phrase()">Cancelar</button>
+                    </div>
                 </div>
                 <div id="var_help_box" style="display:none; margin-top: 15px; border: 1px dashed #ef4444; border-radius: 6px; padding: 15px; background: #fff;">
-                    <table class="actions-table" style="margin-top:0;">
+                    <table class="actions-table" style="margin-top: 0;">
                         <thead><tr><th>Variável</th><th>Descrição</th><th>Exemplo</th></tr></thead>
                         <tbody>
                             <tr><td><b>{{processo}}</b></td><td>Nome do processo</td><td>Recrutamento</td></tr>
@@ -122,11 +125,11 @@
                     </table>
                 </div>
             </div>
-            <b style="font-size:0.65rem; color:#94a3b8; text-transform:uppercase">Objetivos Estratégicos</b>
-            <div id="disp_s1_obj" class="item-list" style="margin-bottom:20px"></div>
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px">
-                <div><b style="font-size:0.65rem; color:#94a3b8; text-transform:uppercase">Dores</b><div id="disp_s1_pains" class="item-list"></div></div>
-                <div><b style="font-size:0.65rem; color:#94a3b8; text-transform:uppercase">Necessidades</b><div id="disp_s1_needs" class="item-list"></div></div>
+            <b class="field-label-light">Objetivos Estratégicos</b>
+            <div id="disp_s1_obj" class="item-list" style="margin-bottom: 20px;"></div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <div><b class="field-label-light">Dores</b><div id="disp_s1_pains" class="item-list"></div></div>
+                <div><b class="field-label-light">Necessidades</b><div id="disp_s1_needs" class="item-list"></div></div>
             </div>
             <div id="disp_s1_prop" class="value-prop-box"></div>
         </section>
@@ -138,21 +141,21 @@
                     <select id="s2_cat">
                         <option value="S">Força</option><option value="W">Fraqueza</option><option value="O">Oportunidade</option><option value="T">Ameaça</option>
                     </select>
-                    <input type="text" id="s2_val" placeholder="Descrição..." style="flex:1">
+                    <input type="text" id="s2_val" placeholder="Descrição..." style="flex: 1;">
                     <button class="btn-main" onclick="addItem('sec2', 's2')">Add</button>
                 </div>
             </div>
-            <div class="view-switcher no-print" style="margin-top:15px; margin-bottom:15px; border-bottom: 1px solid var(--border-color);">
+            <div class="view-switcher no-print" style="margin-top: 15px; margin-bottom: 15px; border-bottom: 1px solid var(--border-color);">
                 <button id="btn-swot-matrix" class="view-tab active" onclick="switchSwotView('matrix')">Matriz SWOT</button>
                 <button id="btn-swot-table" class="view-tab" onclick="switchSwotView('table')">Tabela</button>
             </div>
             <div id="disp_swot_matrix">
                 <div class="swot-header"><span>AMBIENTE EXTERNO</span><span>AMBIENTE INTERNO</span></div>
                 <div class="swot-grid">
-                    <div class="swot-box swot-pos"><b>Oportunidades (+)</b><div id="disp_swot_o"></div></div>
-                    <div class="swot-box swot-pos"><b>Forças (+)</b><div id="disp_swot_s"></div></div>
-                    <div class="swot-box swot-neg"><b>Ameaças (-)</b><div id="disp_swot_t"></div></div>
-                    <div class="swot-box swot-neg"><b>Fraquezas (-)</b><div id="disp_swot_w"></div></div>
+                    <div class="swot-box swot-pos"><b>Oportunidades</b><div id="disp_swot_o"></div></div>
+                    <div class="swot-box swot-pos"><b>Forças</b><div id="disp_swot_s"></div></div>
+                    <div class="swot-box swot-neg"><b>Ameaças</b><div id="disp_swot_t"></div></div>
+                    <div class="swot-box swot-neg"><b>Fraquezas</b><div id="disp_swot_w"></div></div>
                 </div>
             </div>
             <div id="disp_swot_table" style="display:none; overflow-x: auto;"></div>
@@ -167,13 +170,13 @@
                         <option value="PES">Pessoas e Equipes</option><option value="TEC">Sistemas e Tecnologias</option>
                         <option value="MAT">Infraestrutura e Materiais</option><option value="LEI">Leis, Normas e Funções</option><option value="TEM">Tempo e Prazos</option>
                     </select>
-                    <input type="text" id="s3_val" placeholder="Descrição..." style="flex:1">
+                    <input type="text" id="s3_val" placeholder="Descrição..." style="flex: 1;">
                     <button class="btn-main" onclick="addItem('sec3', 's3')">Add</button>
                 </div>
             </div>
-            <div class="view-switcher no-print" style="margin-top:0; margin-bottom:15px; border-bottom: 1px solid var(--border-color);">
-                <button id="btn-s3-cat" class="view-tab active" onclick="switchS3View('category')">Agrupar por Categoria</button>
-                <button id="btn-s3-type" class="view-tab" onclick="switchS3View('type')">Agrupar por Tipo</button>
+            <div class="view-switcher no-print" style="margin-top: 0; margin-bottom: 15px; border-bottom: 1px solid var(--border-color);">
+                <button id="btn-s3-type" class="view-tab active" onclick="switchS3View('type')">Agrupar por Tipo</button>
+                <button id="btn-s3-cat" class="view-tab" onclick="switchS3View('category')">Agrupar por Categoria</button>
             </div>
             <div id="disp_s3_dynamic"></div>
         </section>
@@ -183,23 +186,23 @@
             <div class="form-box">
                 <div class="input-row">
                     <select id="s4_cat" onchange="toggleS4Input()"><option value="KPI">KPI</option><option value="KRI">KRI</option></select>
-                    <input type="text" id="s4_val" placeholder="Nome da Métrica" style="flex:1">
+                    <input type="text" id="s4_val" placeholder="Nome da Métrica" style="flex: 1;">
                 </div>
                 <div class="input-row" id="s4_details_row">
-                    <input type="text" id="s4_min" placeholder="Mín." style="width:60px">
-                    <input type="text" id="s4_max" placeholder="Máx." style="width:60px">
-                    <input type="text" id="s4_cur" placeholder="Atual" style="width:70px"><input type="text" id="s4_meta" placeholder="Meta" style="width:70px"><input type="text" id="s4_uni" placeholder="Unid." style="width:60px">
+                    <input type="text" id="s4_min" placeholder="Mín." style="width: 60px;">
+                    <input type="text" id="s4_max" placeholder="Máx." style="width: 60px;">
+                    <input type="text" id="s4_cur" placeholder="Atual" style="width: 70px;"><input type="text" id="s4_meta" placeholder="Meta" style="width: 70px;"><input type="text" id="s4_uni" placeholder="Unid." style="width: 60px;">
                     <label id="lbl_s4_critical" style="display:none; align-items:center; gap:4px; font-size:0.75rem; font-weight:bold; color:var(--danger); margin-right: 10px;"><input type="checkbox" id="s4_critical"> Risco Crítico</label>
                     <button class="btn-main" onclick="addItem('sec4', 's4')">Add</button>
                 </div>
             </div>
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px">
-                <div><b style="font-size:0.65rem; color:#94a3b8; text-transform:uppercase">Desempenho</b><div id="disp_s4_kpi" class="item-list"></div></div>
-                <div><b style="font-size:0.65rem; color:#94a3b8; text-transform:uppercase">Riscos</b><div id="disp_s4_kri" class="item-list"></div></div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div><b class="field-label-light">Desempenho</b><div id="disp_s4_kpi" class="item-list"></div></div>
+                <div><b class="field-label-light">Riscos</b><div id="disp_s4_kri" class="item-list"></div></div>
             </div>
-            <div id="list_int" style="margin-top:20px; padding:12px; background:#fffafb; border:1px solid #fee2e2; border-radius:6px; color:var(--danger)">
-                <b style="font-size:0.65rem; text-transform:uppercase">🚫 Riscos Críticos</b>
-                <div id="disp_int" style="margin-top:5px; font-weight:500"></div>
+            <div id="list_int" style="margin-top: 20px; padding: 12px; background: #fffafb; border: 1px solid #fee2e2; border-radius: 6px; color: var(--danger);">
+                <b class="field-label mb-0" style="color: inherit;">🚫 Riscos Críticos</b>
+                <div id="disp_int" style="margin-top: 5px; font-weight: 500;"></div>
             </div>
         </section>
 
@@ -209,13 +212,13 @@
                 <div class="input-row">
                     <select id="s5_cat" onchange="toggleS5Icon()"><option value="ART">Artefato</option><option value="RES">Resultado</option></select>
                     <select id="s5_icon"><option value="📄">📄 Doc</option><option value="💻">💻 Cod</option><option value="🛠️">🛠️ Serv</option><option value="⚙️">⚙️ Config</option><option value="🎁">🎁 Valor</option><option value="ℹ️">ℹ️ Info</option></select>
-                    <input type="text" id="s5_val" placeholder="Descrição..." style="flex:1">
+                    <input type="text" id="s5_val" placeholder="Descrição..." style="flex: 1;">
                     <button class="btn-main" onclick="addItem('sec5', 's5')">Add</button>
                 </div>
             </div>
-            <b style="font-size:0.65rem; color:#94a3b8; text-transform:uppercase">Artefatos</b>
+            <b class="field-label-light">Artefatos</b>
             <div id="disp_s5_art" class="artefact-grid"></div>
-            <b style="font-size:0.65rem; color:#94a3b8; text-transform:uppercase; margin-top:20px; display:block">Resultados Esperados</b>
+            <b class="field-label-light" style="margin-top: 20px;">Resultados Esperados</b>
             <div id="disp_s5_res" class="item-list"></div>
         </section>
 
@@ -223,7 +226,7 @@
             <div class="section-title">6. Planejamento e Tempo Total da Iniciativa <button class="btn-edit-action no-print" onclick="toggleEdit('sec6')">Editar Cronograma</button></div>
             
             <div class="form-box no-print">
-                <div class="input-row" style="justify-content:center; align-items:center;">
+                <div class="input-row" style="align-items: center; justify-content: center;">
                     Etapa: <select id="t_idx" onchange="loadTimeData()">
                         <option value="" disabled selected>Selecione a etapa...</option>
                         <option value="1">01 PREPARAR</option><option value="2">02 DESCOBRIR</option>
@@ -235,7 +238,7 @@
                 <button class="btn-main" style="width: 100%; justify-content: center;" onclick="saveTimeStep()">Salvar Etapa</button>
             </div>
 
-            <div class="view-switcher no-print" style="margin-top:0; margin-bottom:15px; border-bottom: 1px solid var(--border-color);">
+            <div class="view-switcher no-print" style="margin-top: 0; margin-bottom: 15px; border-bottom: 1px solid var(--border-color);">
                 <button id="btn-time-cards" class="view-tab active" onclick="switchTimeView('cards')">Cards</button>
                 <button id="btn-time-timeline" class="view-tab" onclick="switchTimeView('timeline')">Timeline</button>
                 <button id="btn-time-table" class="view-tab" onclick="switchTimeView('table')">Tabela</button>

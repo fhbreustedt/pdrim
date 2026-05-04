@@ -40,7 +40,7 @@
                 <button class="btn-main" onclick="openNewForm()">Adicionar</button>
                 <button class="btn-main btn-danger" id="btnDeleteToggle" onclick="toggleDeleteMode()">Excluir</button>
                 <div class="dropdown">
-                    <button class="btn-main btn-secondary" onclick="toggleDropdown(event)">Outras Ações</button>
+                    <button class="btn-main btn-secondary" onclick="toggleDropdown(event)">+ AÇÕES</button>
                     <div class="dropdown-content" id="otherActionsDropdown">
                         <a href="#" onclick="document.getElementById('import-file').click(); return false;">Importar</a>
                         <a href="#" onclick="exportJSON(); return false;">Exportar</a>
@@ -111,22 +111,24 @@
             </div>
         </div>
 
+        <div id="missing-categories-alert" class="alert-box-danger" style="display:none; margin-bottom: 15px; font-size: 0.85rem;"></div>
+
         <div class="view-switcher racionalizar-switcher no-print">
             <div>
                 <button id="btn-view-cards" class="view-tab active" onclick="switchView('cards')">Cards</button>
                 <button id="btn-view-timeline" class="view-tab" onclick="switchView('timeline')">Timeline</button>
                 <button id="btn-view-table" class="view-tab" onclick="switchView('table')">Tabela</button>
             </div>
-            <button class="btn-edit-action no-print" style="margin-bottom: 5px;" onclick="document.getElementById('help-box').style.display = document.getElementById('help-box').style.display === 'none' ? 'block' : 'none'">Ajuda</button>
+            <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 5px;">
+                <button class="btn-edit-action no-print" onclick="toggleAllCardsTimeline()" id="btn-toggle-all-timeline" style="display: none;">Expandir Todos</button>
+                <button class="btn-edit-action no-print" onclick="document.getElementById('help-box').style.display = document.getElementById('help-box').style.display === 'none' ? 'block' : 'none'">Ajuda</button>
+            </div>
         </div>
          <div id="views-container">
             <div id="cards-view">
                 <div id="cards-root" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; width: 100%;"></div>
             </div>
             <div id="timeline-view" style="display: none;">
-                <div style="display: flex; justify-content: flex-end; margin-bottom: 15px;">
-                    <button class="btn-edit-action no-print" onclick="toggleAllCardsTimeline()" id="btn-toggle-all-timeline">Expandir Todos</button>
-                </div>
                 <div id="timeline-empty" class="empty-state" style="display: none;">Sem ações cadastradas</div>
                 <div id="timeline-root"></div>
             </div>

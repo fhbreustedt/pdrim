@@ -24,6 +24,7 @@ function initUI() {
     if(localStorage.getItem('pdrim_rac_v10_9')) {
         try {
             flatActions = JSON.parse(localStorage.getItem('pdrim_rac_v10_9'));
+            if (!Array.isArray(flatActions)) flatActions = [];
         } catch(e) {}
     }
 
@@ -166,6 +167,11 @@ function showStatusSelectInTimeline(id, currentStatus, element) {
 function openNewForm() { resetForm(); document.getElementById('formTitle').innerText = 'Nova Ação'; document.getElementById('formContainer').style.display = 'block'; window.scrollTo(0,0); }
 function resetForm() { document.getElementById('formContainer').style.display = 'none'; document.getElementById('pdrimForm').reset(); document.getElementById('editId').value = ''; quill.setContents([]); render(); }
 
+function openNewFormWithCategory(cat) {
+    openNewForm();
+    document.getElementById('cat').value = cat;
+}
+
 function editAction(id) {
     const action = flatActions.find(a => a.id == id);
     if (!action) return;
@@ -176,8 +182,8 @@ function editAction(id) {
     document.getElementById('editId').value = action.id;
     document.getElementById('title').value = action.title;
     document.getElementById('cat').value = action.cat;
-    document.getElementById('start').value = startAction.date;
-    document.getElementById('end').value = endAction ? endAction.date : startAction.date;
+    document.getElementById('start').value = startAction ? startAction.date : '';
+    document.getElementById('end').value = endAction ? endAction.date : (startAction ? startAction.date : '');
     quill.root.innerHTML = action.desc;
     document.getElementById('formTitle').innerText = 'Editar Ação';
     document.getElementById('formContainer').style.display = 'block';
@@ -300,6 +306,31 @@ function render() {
         viewsContainer.classList.add('editing-active');
     } else {
         viewsContainer.classList.remove('editing-active');
+    }
+    
+    const alertBox = document.getElementById('missing-categories-alert');
+    if (alertBox) {
+        if (flatActions.length > 0) {
+            const usedCats = new Set(flatActions.map(a => a.cat));
+            const allCats = Object.keys(categories);
+            const missingCats = allCats.filter(c => !usedCats.has(c));
+            
+            if (missingCats.length > 0) {
+                const missingLinks = missingCats.map(c => `<span class="action-link" style="margin-right: 5px; color: var(--accent); text-decoration: underline; cursor: pointer;" onclick="openNewFormWithCategory('${c}')">${c}</span>`).join(', ');
+                alertBox.innerHTML = `<b style="color: inherit;">🚫 Falta cadastrar ações de:</b> ${missingLinks}`;
+                alertBox.style.display = 'block';
+            } else {
+                alertBox.style.display = 'none';
+            }
+        } else {
+            alertBox.style.display = 'none';
+        }
+    }
+
+    const btnExpand = document.getElementById('btn-toggle-all-timeline');
+    if (btnExpand) {
+        // Exibe apenas se estiver na view timeline e houver dados
+        btnExpand.style.display = (currentView === 'timeline' && filtered.length > 0) ? 'inline-block' : 'none';
     }
 
     if (currentView === 'cards') {
@@ -463,7 +494,7 @@ function renderTimeline(data) {
                         </div>
                         <div class="card-title" style="margin-bottom: 8px;">
                             <span style="color: ${catColorsDark[ev.cat] || 'var(--dark-accent)'}; font-size: 1.1rem; font-weight: 800;">${ev.title}</span> 
-                            <span class="no-print" style="cursor:pointer; color:#64748b; font-weight:normal; font-size:0.75rem; transition: 0.2s;" onmouseover="this.style.color='#1e293b'" onmouseout="this.style.color='#64748b'" onclick="toggleCardExpansion(${index}, false)">(Ocultar detalhes)</span>
+                            <span class="no-print action-link" style="font-size:0.75rem; color: var(--accent); text-decoration: underline; cursor: pointer;" onclick="toggleCardExpansion(${index}, false)">(Ocultar detalhes)</span>
                         </div>
                         <div style="margin-bottom: 12px;">
                             <span class="cat-badge" style="background: rgba(255,255,255,0.6);">${ev.cat}</span>
@@ -472,7 +503,7 @@ function renderTimeline(data) {
                     </div>
                     <div class="timeline-text-view hover-trigger" id="text-view-${index}" style="display: ${timelineExpandedAll ? 'none' : 'flex'}; align-items: center; gap: 8px; width: 100%; position: relative;">
                         <span class="cat-badge" style="background: ${categories[ev.cat]};">${ev.cat}</span>
-                        <span style="font-weight: 600; color: var(--dark-accent); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 10px;">${actionTextLabel}: ${ev.title} <span class="no-print" style="cursor:pointer; color:#94a3b8; font-weight:normal; font-size:0.75rem; transition: 0.2s;" onmouseover="this.style.color='#0284c7'" onmouseout="this.style.color='#94a3b8'" onclick="toggleCardExpansion(${index}, true)">(Ver detalhes)</span></span>
+                        <span style="font-weight: 600; color: var(--dark-accent); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 10px;">${actionTextLabel}: ${ev.title} <span class="no-print action-link" style="font-size:0.75rem; color: var(--accent); text-decoration: underline; cursor: pointer;" onclick="toggleCardExpansion(${index}, true)">(Ver detalhes)</span></span>
                         <div class="status-tag tag-${ev.status}" title="Alterar status" onclick="showStatusSelectInTimeline(${ev.id}, '${ev.status}', this)" style="margin-right: 35px;">
                             ${ev.status}
                             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
@@ -676,11 +707,6 @@ function importJSON(fileInput) {
     const reader = new FileReader();
     reader.onload = (e) => { try { flatActions = JSON.parse(e.target.result); save(); render(); fileInput.value = ''; showToast("Arquivo importado com sucesso!", "success"); } catch (err) { showToast("Arquivo JSON Inválido.", "error"); } };
     reader.readAsText(fileInput.files[0]);
-}
-
-function exportJSON() {
-    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(flatActions)], {type: "application/json"})); a.download = "pdrim_racionalizar.json"; a.click();
-    showToast("Arquivo exportado com sucesso!", "success");
 }
 
 function zerarArtefato() {
