@@ -9,9 +9,10 @@
 </head>
 <body>
 
-    <header>
+    <header class="home-header">
         <h1>PDRIM: GUIA R-BPM</h1>
         <p>Uma abordagem estruturada para gestão integrada de processos e riscos.</p>
+        
     </header>
 
     <main class="container">
@@ -31,6 +32,7 @@
                     <div class="card-links">
                         <a href="#" class="btn">Instruções</a>
                         <a href="preparar.html" class="btn">Canvas</a>
+                        <a href="#" class="btn">Avaliar</a>
                     </div>
                 </div>
                 <div class="card" data-step="D">
@@ -42,6 +44,7 @@
                     <div class="card-links">
                         <a href="#" class="btn">Instruções</a>
                         <a href="#" class="btn">Canvas</a>
+                        <a href="#" class="btn">Avaliar</a>
                     </div>
                 </div>
                 <div class="card" data-step="R">
@@ -53,6 +56,7 @@
                     <div class="card-links">
                         <a href="#" class="btn">Instruções</a>
                         <a href="racionalizar.html" class="btn">Canvas</a>
+                        <a href="#" class="btn">Avaliar</a>
                     </div>
                 </div>
                 <div class="card" data-step="I">
@@ -64,6 +68,7 @@
                     <div class="card-links">
                         <a href="#" class="btn">Instruções</a>
                         <a href="#" class="btn">Template</a>
+                        <a href="#" class="btn">Avaliar</a>
                     </div>
                 </div>
                 <div class="card" data-step="M">
@@ -75,16 +80,29 @@
                     <div class="card-links">
                         <a href="#" class="btn">Instruções</a>
                         <a href="#" class="btn">Template</a>
+                        <a href="#" class="btn">Avaliar</a>
                     </div>
                 </div>
             </div>
         </section>
+
+        <section class="global-actions no-print" style="display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; margin-top: 2rem;">
+            <input type="file" id="importInitiativeFile" accept=".json" style="display: none;" onchange="importInitiative(event)">
+            <button class="btn-main btn-secondary" onclick="document.getElementById('importInitiativeFile').click()">Importar</button>
+            <button id="btn-export-init" class="btn-main" style="display: none;" onclick="exportInitiative()">Exportar</button>
+            <button id="btn-pdf-init" class="btn-main" style="display: none;" onclick="gerarPDFIniciativa()">Gerar PDF</button>
+            <button id="btn-zerar-init" class="btn-main btn-danger" style="display: none;" onclick="zerarIniciativa()">Zerar Iniciativa</button>
+        </section>
+
+        <div style="display: flex; justify-content: center; align-items: center; gap: 20px; flex-wrap: wrap; margin-top: 20px;">
+            <p id="header-initiative-name" style="display: none; font-weight: 700; color: var(--accent); margin: 0; font-size: 1.1rem;">Iniciativa: <span id="header-initiative-text"></span></p>
+        </div>
     </main>
 
     <footer>
         <p>PDRIM Project &copy; 2026 - Desenvolvido por Fernando Breustedt</p>
     </footer>
 
-    <script src="script.js"></script>
+    <script src="js/script.js"></script>
 </body>
 </html>

@@ -3,52 +3,52 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDRIM - Racionalização v7.5 (Sync Selection)</title>
+    <title>PDRIM - Template Racionalizar</title>
     <link href="https://fonts.googleapis.com/css2?family=Segoe+UI&family=Open+Sans:wght@300;400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
     <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
     <nav class="breadcrumbs">
-        <a href="index.html">Página Inicial</a>
-        <span class="separator">&gt;</span>
-        <a href="preparar.html">Preparar</a>
-        <span class="separator">&gt;</span>
-        <a href="descobrir.html">Descobrir</a>
-        <span class="separator">&gt;</span>
-        <span>Racionalizar</span>
-        <span class="separator">&gt;</span>
-        <a href="implementar.html">Implementar</a>
-        <span class="separator">&gt;</span>
-        <a href="monitorar.html">Monitorar</a>
+        <a href="index.html" class="bc-home" title="Página Inicial">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+        </a>
+        <a href="preparar.html" class="bc-step">Preparar</a>
+        <a href="descobrir.html" class="bc-step">Descobrir</a>
+        <span class="bc-step active">Racionalizar</span>
+        <a href="implementar.html" class="bc-step">Implementar</a>
+        <a href="monitorar.html" class="bc-step">Monitorar</a>
     </nav>
 
     <header>
-        <h1>PDRIM: Canvas Racionalizar</h1>
-        <p>Etapa 3: Planejamento das etapas da solução.</p>
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 15px;">
+            <div>
+                <h1>PDRIM: Canvas Racionalizar</h1>
+                <p>Etapa 3: Planejamento das etapas da solução.</p>
+                <p id="header-initiative-name" style="display: none; font-weight: 700; color: var(--accent); margin-top: 5px; margin-bottom: 0; padding-bottom: 0; font-size: 1.1rem;">Iniciativa: <span id="header-initiative-text"></span></p>
+            </div>
+        </div>
+    </header>
+
+    <main class="racionalizar">
         <div class="header-controls no-print" id="non-printable-controls">
             <div class="control-group">
                 <label>Filtro</label>
                 <select id="filter" onchange="render()"><option value="all">Todas as Categorias</option></select>
             </div>
             <div class="button-group">
-                <button class="btn-main" onclick="openNewForm()">NOVA AÇÃO</button>
-                <button class="btn-main btn-danger" id="btnDeleteToggle" onclick="toggleDeleteMode()">EXCLUIR AÇÃO</button>
+                <button class="btn-main" onclick="openNewForm()">Adicionar</button>
+                <button class="btn-main btn-danger" id="btnDeleteToggle" onclick="toggleDeleteMode()">Excluir</button>
                 <div class="dropdown">
-                    <button class="btn-main btn-secondary" onclick="toggleDropdown(event)">OUTRAS AÇÕES</button>
+                    <button class="btn-main btn-secondary" onclick="toggleDropdown(event)">Outras Ações</button>
                     <div class="dropdown-content" id="otherActionsDropdown">
                         <a href="#" onclick="document.getElementById('import-file').click(); return false;">Importar</a>
                         <a href="#" onclick="exportJSON(); return false;">Exportar</a>
-                        <a href="#" onclick="savePDF(); return false;">Salvar PDF</a>
+                        <a href="#" onclick="printPage(); return false;">Gerar PDF</a>
                     </div>
                 </div>
             </div>
         </div>
-    </header>
-
-    <main class="racionalizar">
     <div id="formContainer" class="content-box no-print">
         <h2 id="formTitle" style="margin-top: 0; font-size: 1.2rem; color: var(--dark-accent);">Nova Ação</h2>
         <form id="pdrimForm">
@@ -85,7 +85,7 @@
             </div>
             <div class="button-group" style="margin-top: 15px;">
                 <button type="submit" class="btn-main">SALVAR AÇÃO</button>
-                <button type="button" class="btn-main btn-cancel" onclick="document.getElementById('formContainer').style.display = 'none'">CANCELAR</button>
+                <button type="button" class="btn-main btn-cancel" onclick="resetForm()">CANCELAR</button>
             </div>
         </form>
     </div>
@@ -98,17 +98,41 @@
             <button class="btn-main btn-danger" onclick="confirmBulkDelete()">Excluir Selecionados</button>
         </div>
 
-        <div class="legend-container" id="legend"></div>
-        <div class="view-switcher">
-            <button id="btn-view-timeline" class="view-tab active" onclick="switchView('timeline')">Timeline</button>
-            <button id="btn-view-table" class="view-tab" onclick="switchView('table')">Tabela</button>
+        <div id="help-box" style="display:none; margin-bottom: 15px; border: 1px dashed var(--accent); border-radius: 6px; padding: 15px; background: #f0f7ff; color: var(--dark-accent); font-size: 0.85rem;">
+            <b style="display:block; margin-bottom:8px;">Diretrizes de Racionalização:</b> A iniciativa deve ter, minimamente, ao menos uma ação de cada uma das seguintes categorias:
+            <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px;">
+                <span class="cat-badge" style="background: var(--color-capacitacao);">Capacitação</span>
+                <span class="cat-badge" style="background: var(--color-mudanca);">Gestão da Mudança</span>
+                <span class="cat-badge" style="background: var(--color-tecnologia);">Tecnologia</span>
+                <span class="cat-badge" style="background: var(--color-implantacao);">Implantação</span>
+                <span class="cat-badge" style="background: var(--color-riscos);">Definição de Riscos</span>
+                <span class="cat-badge" style="background: var(--color-riscos);">Tratamento de Riscos</span>
+                <span class="cat-badge" style="background: var(--color-metas);">Metas e Indicadores</span>
+            </div>
+        </div>
+
+        <div class="view-switcher racionalizar-switcher no-print">
+            <div>
+                <button id="btn-view-cards" class="view-tab active" onclick="switchView('cards')">Cards</button>
+                <button id="btn-view-timeline" class="view-tab" onclick="switchView('timeline')">Timeline</button>
+                <button id="btn-view-table" class="view-tab" onclick="switchView('table')">Tabela</button>
+            </div>
+            <button class="btn-edit-action no-print" style="margin-bottom: 5px;" onclick="document.getElementById('help-box').style.display = document.getElementById('help-box').style.display === 'none' ? 'block' : 'none'">Ajuda</button>
         </div>
          <div id="views-container">
-            <div id="timeline-view">
+            <div id="cards-view">
+                <div id="cards-root" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; width: 100%;"></div>
+            </div>
+            <div id="timeline-view" style="display: none;">
+                <div style="display: flex; justify-content: flex-end; margin-bottom: 15px;">
+                    <button class="btn-edit-action no-print" onclick="toggleAllCardsTimeline()" id="btn-toggle-all-timeline">Expandir Todos</button>
+                </div>
+                <div id="timeline-empty" class="empty-state" style="display: none;">Sem ações cadastradas</div>
                 <div id="timeline-root"></div>
             </div>
             <div id="table-view" style="display: none;">
-                <table class="actions-table">
+                <div id="table-empty" class="empty-state" style="display: none;">Sem ações cadastradas</div>
+                <table class="actions-table" id="table-content">
                     <thead>
                         <tr>
                             <th><input type="checkbox" class="delete-checkbox-header" onchange="selectAll(this.checked)"></th>
