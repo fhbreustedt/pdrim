@@ -32,9 +32,9 @@ function checkInitiativeState() {
     });
 
     if (hasData) {
-        document.getElementById('btn-export-init').style.display = 'inline-block';
-        document.getElementById('btn-pdf-init').style.display = 'inline-block';
-        document.getElementById('btn-zerar-init').style.display = 'inline-block';
+        const btnExp = document.getElementById('btn-export-init'); if(btnExp) btnExp.style.display = 'inline-block';
+        const btnPdf = document.getElementById('btn-pdf-init'); if(btnPdf) btnPdf.style.display = 'inline-block';
+        const btnZer = document.getElementById('btn-zerar-init'); if(btnZer) btnZer.style.display = 'inline-block';
     } else {
         const btnExp = document.getElementById('btn-export-init'); if(btnExp) btnExp.style.display = 'none';
         const btnPdf = document.getElementById('btn-pdf-init'); if(btnPdf) btnPdf.style.display = 'none';
