@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDRIM - Canvas Descobrir</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Segoe+UI&family=Open+Sans:wght@300;400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <nav class="breadcrumbs">
+        <a href="index.html" class="bc-home" title="Página Inicial">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+        </a>
+        <a href="preparar.html" class="bc-step">Preparar</a>
+        <span class="bc-step active">Descobrir</span>
+        <a href="racionalizar.html" class="bc-step">Racionalizar</a>
+        <a href="implementar.html" class="bc-step">Implementar</a>
+        <a href="monitorar.html" class="bc-step">Monitorar</a>
+    </nav>
+
+    <header>
+        <div class="header-title-container">
+            <div>
+                <h1>PDRIM: Canvas Descobrir</h1>
+                <p>Etapa 2: Levantamento e análise do processo (AS-IS, TO-BE e Comparativo) integrando riscos.</p>
+                <p id="header-initiative-name">Iniciativa: <span id="header-initiative-text"></span></p>
+            </div>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="header-controls no-print" id="non-printable-controls">
+            <div class="button-group">
+                <input type="file" id="import-json-file" accept=".json" style="display:none" onchange="importJSON(event)">
+                <div class="dropdown">
+                    <button class="btn-main btn-secondary" onclick="toggleDropdown(event)">+ AÇÕES</button>
+                    <div class="dropdown-content" id="otherActionsDropdown">
+                        <a href="#" onclick="document.getElementById('import-json-file').click(); return false;">Importar Artefato</a>
+                        <a href="#" onclick="exportJSON(); return false;">Exportar Artefato</a>
+                        <a href="#" onclick="printPage(); return false;">Gerar PDF</a>
+                        <a href="#" onclick="zerarArtefato(); return false;" style="color: var(--danger);">Zerar Artefato</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <section class="section full-width mt-20" id="sec-diagram">
+            <div class="section-title" style="margin-bottom: 10px;">1. Diagrama do Processo (Imagem)</div>
+            
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <div class="view-switcher view-switcher-compact no-print" style="margin: 0; border: none;">
+                    <button id="btn-view-asis" class="view-tab active" onclick="switchImgView('as-is')">Modelagem AS-IS</button>
+                    <button id="btn-view-tobe" class="view-tab" onclick="switchImgView('to-be')">Projeção TO-BE</button>
+                    <button id="btn-view-comp" class="view-tab" onclick="switchImgView('compare')">Comparativo</button>
+                </div>
+                
+                <div class="button-group no-print" id="img-mode-controls">
+                    <input type="file" id="img-file" accept="image/*" style="display:none" onchange="importImage(event)">
+                    <button class="btn-main btn-secondary" style="padding: 6px 12px; font-size: 0.75rem;" onclick="document.getElementById('img-file').click()">Carregar Imagem</button>
+                    <button id="btn-remove-img" class="btn-main btn-danger" style="padding: 6px 12px; font-size: 0.75rem; display: none;" onclick="clearImage()">Remover Imagem</button>
+                </div>
+            </div>
+            
+            <div id="img-wrapper" style="position: relative; min-height: 300px; border: 1px dashed var(--border-color); background: #f8fafc; border-radius: 4px; overflow: hidden; display: flex; align-items: center; justify-content: center; padding: 10px;">
+                <div id="img-overlay-empty" style="text-align: center;">
+                    <p style="color: #64748b; font-weight: 600; margin-bottom: 15px;">Nenhuma imagem carregada para esta visualização.</p>
+                    <button class="btn-main" style="margin: 0 auto;" onclick="document.getElementById('img-file').click()">Carregar Imagem</button>
+                </div>
+                <img id="img-display" style="max-width: 100%; max-height: 600px; display: none; object-fit: contain; box-shadow: 0 4px 6px rgba(0,0,0,0.1);" />
+            </div>
+
+            <div class="grid-2-cols gap-20 mt-20">
+                <div class="help-box" style="margin-top: 0; background: #fff; border: 1px solid var(--border-color);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <b class="field-label" id="activity-panel-title" style="margin-bottom: 0;">Atividades do Modelo</b>
+                        <button class="btn-edit-action" id="btn-back-to-activities" style="display: none;" onclick="selectRisk(null)">Ver Todas</button>
+                    </div>
+                    <div id="activity-add-wrapper" class="input-row no-print" style="margin-bottom: 10px;">
+                        <input type="text" id="new-activity-desc" placeholder="Nome da atividade..." class="flex-1" style="padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.8rem;" onkeypress="if(event.key==='Enter') addActivity()">
+                        <button class="btn-main" style="padding: 6px 12px; font-size: 0.75rem;" onclick="addActivity()">Add</button>
+                    </div>
+                    <div id="activity-list" class="item-list" style="max-height: 300px; overflow-y: auto; padding-right: 5px;">
+                        <span class="empty-msg">Nenhuma atividade cadastrada nesta aba.</span>
+                    </div>
+                </div>
+                <div class="help-box" style="margin-top: 0; background: #fff; border: 1px solid var(--border-color);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <b class="field-label" id="risk-panel-title" style="margin-bottom: 0;">Riscos do Processo</b>
+                        <button class="btn-edit-action" id="btn-back-to-bank" style="display: none;" onclick="selectActivity(null)">Ver Todos</button>
+                    </div>
+                    
+                    <div id="risk-bank-container">
+                        <div class="input-row no-print" style="margin-bottom: 10px;">
+                            <input type="text" id="new-global-risk-desc" placeholder="Cadastrar novo risco para o processo..." class="flex-1" style="padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.8rem;" onkeypress="if(event.key==='Enter') addGlobalRisk()">
+                            <button class="btn-main" style="padding: 6px 12px; font-size: 0.75rem;" onclick="addGlobalRisk()">Add</button>
+                        </div>
+                        <div id="global-risk-list" class="item-list" style="max-height: 270px; overflow-y: auto; padding-right: 5px;"></div>
+                    </div>
+
+                    <div id="risk-activity-container" style="display: none;">
+                        <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px;">
+                            <label style="font-size: 0.75rem; color: #475569; display: flex; align-items: center; gap: 5px; cursor: pointer; font-weight: 600;">
+                                <input type="checkbox" id="chk-no-risk" onchange="toggleNoRisk()">
+                                Esta atividade NÃO possui riscos
+                            </label>
+                            <div id="risk-add-wrapper" style="display: flex; flex-direction: column; gap: 8px;">
+                                <div class="input-row no-print" style="margin-bottom: 0;">
+                                    <input type="text" id="new-risk-desc" placeholder="Cadastrar e vincular novo risco..." class="flex-1" style="padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.8rem;" onkeypress="if(event.key==='Enter') addRisk()">
+                                    <button class="btn-main" style="padding: 6px 12px; font-size: 0.75rem;" onclick="addRisk()">Novo</button>
+                                </div>
+                                <div class="input-row no-print" style="margin-bottom: 0;">
+                                    <select id="existing-risk-sel" class="flex-1" style="padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.8rem;"></select>
+                                    <button class="btn-main btn-secondary" style="padding: 6px 12px; font-size: 0.75rem;" onclick="associateRisk()">Vincular</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="risk-list" class="item-list" style="max-height: 270px; overflow-y: auto; padding-right: 5px;"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="section full-width mt-20" id="sec-matrix">
+            <div class="section-title" style="margin-bottom: 10px;">2. Matriz de Resposta Direta (Atividade X Risco)</div>
+            
+            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 30px;">
+                <div style="overflow-x: auto;">
+                    <b class="field-label-light">Priorização Automática de Riscos</b>
+                    <table class="actions-table mt-5">
+                        <thead>
+                            <tr>
+                                <th>Atividade</th>
+                                <th>Risco Identificado</th>
+                                <th>Prob.</th>
+                                <th>Impacto</th>
+                                <th>Nível de Risco</th>
+                            </tr>
+                        </thead>
+                        <tbody id="matrix-body"></tbody>
+                    </table>
+                </div>
+                
+                <div style="text-align: center; border-left: 1px dashed var(--border-color); padding-left: 30px;">
+                    <b class="field-label-light">Mapa de Calor (Heatmap)</b>
+                    <div id="heatmap-container" style="display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); gap: 4px; background: #e2e8f0; border: 2px solid #cbd5e1; padding: 4px; aspect-ratio: 1/1; width: 100%; max-width: 250px; margin: 15px auto;">
+                    </div>
+                    <div style="display: flex; justify-content: space-between; font-size: 0.65rem; color: #64748b; font-weight: 700; max-width: 250px; margin: 5px auto 0;">
+                        <span>IMPACTO &rarr;</span>
+                        <span>&uarr; PROBABILIDADE</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>PDRIM Project &copy; 2026 - Desenvolvido por Fernando Breustedt</p>
+    </footer>
+
+    <script src="js/descobrir.js"></script>
+</body>
+</html>
