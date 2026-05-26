@@ -20,7 +20,45 @@ let currentSortCol = 'start';
 let currentSortDir = 'asc';
 let selectedForDeletion = [];
 
+let sourceModelDesc = null; 
+let sourceDataDesc = null;
+
+function detectSourceModel() {
+    try {
+        const descDataStr = localStorage.getItem('pdrim_desc_v10_9');
+        if (descDataStr) {
+            const descData = JSON.parse(descDataStr);
+            if (descData && descData.models) {
+                const tobe = descData.models['to-be'];
+                const asis = descData.models['as-is'];
+                const basePref = descData.baseModel || 'auto';
+
+                if (basePref === 'to-be') {
+                    sourceModelDesc = 'to-be';
+                    sourceDataDesc = tobe;
+                } else if (basePref === 'as-is') {
+                    sourceModelDesc = 'as-is';
+                    sourceDataDesc = asis;
+                } else {
+                    if (tobe && (tobe.risks.length > 0 || tobe.activities.length > 0)) {
+                        sourceModelDesc = 'to-be';
+                        sourceDataDesc = tobe;
+                    } else if (asis && (asis.risks.length > 0 || asis.activities.length > 0)) {
+                        sourceModelDesc = 'as-is';
+                        sourceDataDesc = asis;
+                    }
+                }
+            }
+        }
+    } catch (e) {
+        console.error(e);
+    }
+}
+
 function initUI() {
+    detectSourceModel();
+    updateSourceModelIndicator();
+
     if(localStorage.getItem('pdrim_rac_v10_9')) {
         try {
             flatActions = JSON.parse(localStorage.getItem('pdrim_rac_v10_9'));
@@ -29,6 +67,11 @@ function initUI() {
     }
 
     const filter = document.getElementById('filter');
+    const catSelect = document.getElementById('cat');
+    if (catSelect) {
+        catSelect.addEventListener('change', handleCategoryChange);
+    }
+
     Object.keys(categories).forEach(c => {
         const opt = document.createElement('option'); opt.value = c; opt.innerText = c; filter.appendChild(opt);
     });
@@ -62,6 +105,36 @@ function initUI() {
     }
     updateBreadcrumbs();
     updateHeaderInitiative();
+}
+
+function updateSourceModelIndicator() {
+    let indicator = document.getElementById('source-model-indicator');
+    if (!indicator) {
+        const headerControls = document.querySelector('.header-controls');
+        if (headerControls) {
+            indicator = document.createElement('div');
+            indicator.id = 'source-model-indicator';
+            indicator.style.fontSize = '0.75rem';
+            indicator.style.fontWeight = 'bold';
+            indicator.style.color = '#64748b';
+            indicator.style.padding = '6px 12px';
+            indicator.style.backgroundColor = '#f8fafc';
+            indicator.style.borderRadius = '4px';
+            indicator.style.border = '1px solid var(--border-color)';
+            indicator.style.display = 'flex';
+            indicator.style.alignItems = 'center';
+            indicator.style.gap = '6px';
+            headerControls.insertBefore(indicator, headerControls.firstChild);
+        }
+    }
+    if (indicator) {
+        if (sourceModelDesc) {
+            indicator.innerHTML = `🔗 <span>Ações baseadas no modelo: <b style="color:var(--dark-accent)">${sourceModelDesc.toUpperCase()}</b></span>`;
+            indicator.style.display = 'flex';
+        } else {
+            indicator.style.display = 'none';
+        }
+    }
 }
 
 function updateBreadcrumbs() {
@@ -164,12 +237,70 @@ function showStatusSelectInTimeline(id, currentStatus, element) {
     setTimeout(() => sel.focus(), 10);
 }
 
-function openNewForm() { resetForm(); document.getElementById('formTitle').innerText = 'Nova Ação'; document.getElementById('formContainer').style.display = 'block'; window.scrollTo(0,0); }
-function resetForm() { document.getElementById('formContainer').style.display = 'none'; document.getElementById('pdrimForm').reset(); document.getElementById('editId').value = ''; quill.setContents([]); render(); }
+function handleCategoryChange() {
+    const cat = document.getElementById('cat').value;
+    let container = document.getElementById('link-container');
+    
+    if (!container) {
+        const formRow1 = document.querySelector('.form-row-1');
+        if (formRow1) {
+            container = document.createElement('div');
+            container.id = 'link-container';
+            container.style.display = 'none';
+            formRow1.insertAdjacentElement('afterend', container);
+        }
+    }
+    
+    if (!container || !sourceDataDesc) return;
+
+    if (cat === 'Tratamento de Riscos') {
+        let opts = '<option value="">-- Ação Global (Sem Vínculo) --</option>';
+        sourceDataDesc.risks.forEach(r => {
+            opts += `<option value="risk_${r.id}">Risco: ${r.desc}</option>`;
+        });
+        container.innerHTML = `
+            <div style="margin-bottom: 15px;">
+                <label style="font-size: 0.65rem; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 4px; display: block;">Vincular a Risco (${sourceModelDesc.toUpperCase()})</label>
+                <select id="linked-item" style="padding: 10px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 0.85rem; width: 100%;">${opts}</select>
+            </div>
+        `;
+        container.style.display = 'block';
+    } else if (cat === 'Metas e Indicadores') {
+        let opts = '<option value="">-- Indicador Global (Sem Vínculo) --</option>';
+        if (sourceDataDesc.activities.length > 0) {
+            opts += '<optgroup label="Atividades">';
+            sourceDataDesc.activities.forEach(a => {
+                opts += `<option value="act_${a.id}">Atividade: ${a.name}</option>`;
+            });
+            opts += '</optgroup>';
+        }
+        if (sourceDataDesc.risks.length > 0) {
+            opts += '<optgroup label="Riscos">';
+            sourceDataDesc.risks.forEach(r => {
+                opts += `<option value="risk_${r.id}">Risco: ${r.desc}</option>`;
+            });
+            opts += '</optgroup>';
+        }
+        container.innerHTML = `
+            <div style="margin-bottom: 15px;">
+                <label style="font-size: 0.65rem; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 4px; display: block;">Vincular a Atividade/Risco (${sourceModelDesc.toUpperCase()})</label>
+                <select id="linked-item" style="padding: 10px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 0.85rem; width: 100%;">${opts}</select>
+            </div>
+        `;
+        container.style.display = 'block';
+    } else {
+        container.style.display = 'none';
+        container.innerHTML = '';
+    }
+}
+
+function openNewForm() { resetForm(); document.getElementById('formTitle').innerText = 'Nova Ação'; document.getElementById('formContainer').style.display = 'block'; window.scrollTo(0,0); handleCategoryChange(); }
+function resetForm() { document.getElementById('formContainer').style.display = 'none'; document.getElementById('pdrimForm').reset(); document.getElementById('editId').value = ''; quill.setContents([]); handleCategoryChange(); render(); }
 
 function openNewFormWithCategory(cat) {
     openNewForm();
     document.getElementById('cat').value = cat;
+    handleCategoryChange();
 }
 
 function editAction(id) {
@@ -182,6 +313,11 @@ function editAction(id) {
     document.getElementById('editId').value = action.id;
     document.getElementById('title').value = action.title;
     document.getElementById('cat').value = action.cat;
+    handleCategoryChange();
+    const linkedItemSel = document.getElementById('linked-item');
+    if (linkedItemSel && action.linkedItem) {
+        linkedItemSel.value = action.linkedItem;
+    }
     document.getElementById('start').value = startAction ? startAction.date : '';
     document.getElementById('end').value = endAction ? endAction.date : (startAction ? startAction.date : '');
     quill.root.innerHTML = action.desc;
@@ -194,7 +330,15 @@ function editAction(id) {
 document.getElementById('pdrimForm').addEventListener('submit', function(e) {
     e.preventDefault();
     const editId = document.getElementById('editId').value;
-    const common = { id: editId ? parseInt(editId) : Date.now(), title: document.getElementById('title').value, cat: document.getElementById('cat').value, desc: quill.root.innerHTML, status: 'pendente' };
+    
+    const linkContainer = document.getElementById('link-container');
+    let linkedItem = '';
+    if (linkContainer && linkContainer.style.display !== 'none') {
+        const linkedItemSel = document.getElementById('linked-item');
+        if (linkedItemSel) linkedItem = linkedItemSel.value;
+    }
+
+    const common = { id: editId ? parseInt(editId) : Date.now(), title: document.getElementById('title').value, cat: document.getElementById('cat').value, desc: quill.root.innerHTML, status: 'pendente', linkedItem: linkedItem };
     if(editId) flatActions = flatActions.filter(a => a.id != editId);
     const s = document.getElementById('start').value;
     const en = document.getElementById('end').value;
@@ -342,6 +486,20 @@ function render() {
     }
 }
 
+function getLinkedItemName(linkedItem) {
+    if (!linkedItem || !sourceDataDesc) return '';
+    if (linkedItem.startsWith('risk_')) {
+        const id = linkedItem.substring(5);
+        const r = sourceDataDesc.risks.find(x => x.id === id);
+        return r ? `⚠️ ${r.desc}` : '';
+    } else if (linkedItem.startsWith('act_')) {
+        const id = linkedItem.substring(4);
+        const a = sourceDataDesc.activities.find(x => x.id === id);
+        return a ? `📋 ${a.name}` : '';
+    }
+    return '';
+}
+
 function renderCards(data) {
     const root = document.getElementById('cards-root');
     root.innerHTML = '';
@@ -391,14 +549,18 @@ function renderCards(data) {
             const startColor = actStartT === minDateTime ? 'color: var(--accent); font-weight: 700;' : 'color: #64748b; font-weight: 400;';
             const endColor = actEndT === maxDateTime ? 'color: var(--accent); font-weight: 700;' : 'color: #64748b; font-weight: 400;';
             
+            const linkedName = getLinkedItemName(act.linkedItem);
+            const linkedHtml = linkedName ? `<div style="grid-column: 1 / -1; font-size: 0.7rem; color: #64748b; background: #f8fafc; padding: 4px 8px; border-radius: 4px; margin-top: 4px; margin-bottom: -4px;">🔗 <b>Vínculo:</b> ${linkedName}</div>` : '';
+
             html += `<div class="action-card-item hover-trigger ${editClass} ${deleteClass}" style="display: grid; grid-template-columns: auto 1fr auto auto; gap: 10px; align-items: center; padding: 12px 4px; border-bottom: ${borderStyle}; border-radius: 4px; position: relative; transition: all 0.3s;">
                 <div style="text-align: center; display: flex; align-items: center; justify-content: center; gap: 8px;">
                     <input type="checkbox" class="delete-checkbox" value="${act.id}" onchange="handleCheckboxChange(this)" ${checkedAttr}>
                     <span class="status-dot ${act.status}" title="${act.status}" onclick="showStatusSelectInTable(${act.id}, '${act.status}', this)" style="cursor:pointer;"></span>
                 </div>
-                <span style="font-size:0.8rem; line-height:1.3; font-weight: 600; color: var(--dark-accent); word-break: break-word; padding-right: 10px;">${act.title}</span>
+                <div style="display: flex; flex-direction: column; padding-right: 10px;"><span style="font-size:0.8rem; line-height:1.3; font-weight: 600; color: var(--dark-accent); word-break: break-word;">${act.title}</span></div>
                 <span style="font-size:0.75rem; text-align: right; white-space: nowrap; ${startColor}">${s}</span>
                 <span style="font-size:0.75rem; text-align: right; white-space: nowrap; ${endColor}">${e}</span>
+                ${linkedHtml}
                 <div class="no-print hover-target" style="top: 50%; transform: translateY(-50%); right: 4px;">
                     <span style="cursor:pointer; color:#0284c7; font-size: 1rem; line-height: 1;" onclick="editAction(${act.id})" title="Editar">✎</span>
                     <span style="cursor:pointer; color:#ef4444; font-size: 1rem; line-height: 1; margin-left: 8px;" onclick="deleteSingleAction(${act.id})" title="Excluir">✕</span>
@@ -481,6 +643,9 @@ function renderTimeline(data) {
             else if (ev.label === 'Início') actionTextLabel = 'Início da Ação';
             else if (ev.label === 'Fim') actionTextLabel = 'Fim da Ação';
 
+            const linkedName = getLinkedItemName(ev.linkedItem);
+            const linkedHtml = linkedName ? `<div style="margin-bottom: 8px; font-size: 0.7rem; color: #64748b; background: rgba(255,255,255,0.7); padding: 4px 8px; border-radius: 4px; display: inline-block;">🔗 <b>Vínculo:</b> ${linkedName}</div><br>` : '';
+
             rightContent = `
                 <div class="timeline-card-wrapper">
                     <div class="timeline-card ${ev.status} ${timelineCardClass} ${timelineCardDeleteClass}" id="card-${index}" style="background: ${categories[ev.cat]}; display: ${timelineExpandedAll ? 'block' : 'none'};">
@@ -499,6 +664,7 @@ function renderTimeline(data) {
                         <div style="margin-bottom: 12px;">
                             <span class="cat-badge" style="background: rgba(255,255,255,0.6);">${ev.cat}</span>
                         </div>
+                        ${linkedHtml}
                         <div class="card-content">${ev.desc}</div>
                     </div>
                     <div class="timeline-text-view hover-trigger" id="text-view-${index}" style="display: ${timelineExpandedAll ? 'none' : 'flex'}; align-items: center; gap: 8px; width: 100%; position: relative;">
@@ -608,10 +774,14 @@ function renderTable(data) {
         const checkedAttr = isDeletingThis ? 'checked' : '';
         const startStr = action.startDate.split('-').reverse().join('/');
         const endStr = action.endDate.split('-').reverse().join('/');
+        
+        const linkedName = getLinkedItemName(action.linkedItem);
+        const titleHtml = linkedName ? `<div>${action.title}</div><div style="font-size: 0.65rem; color: #64748b; margin-top: 2px;">🔗 ${linkedName}</div>` : action.title;
+
         root.insertAdjacentHTML('beforeend', `
             <tr class="action-row ${action.status} ${tableRowClass} ${tableRowDeleteClass}" id="row-${action.id}">
                 <td><input type="checkbox" class="delete-checkbox" value="${action.id}" onchange="handleCheckboxChange(this)" ${checkedAttr}></td>
-                <td>${action.title}</td>
+                <td>${titleHtml}</td>
                 <td>${action.cat}</td>
                 <td>${startStr}</td>
                 <td>${endStr}</td>
@@ -695,7 +865,6 @@ function switchView(view) {
     render();
 }
 
-// Fecha o dropdown se o usuário clicar fora dele
 window.onclick = function(event) {
   if (!event.target.matches('.dropdown .btn-main')) {
     document.querySelectorAll('.dropdown.show').forEach(d => d.classList.remove('show'));
