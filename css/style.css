@@ -386,6 +386,24 @@ footer {
     border-bottom: 1px solid var(--accent);
 }
 
+/* Caixa de texto sobre a imagem (Canvas) */
+.inline-text-editor {
+    position: absolute;
+    z-index: 100;
+    padding: 6px 10px;
+    border: 2px dashed var(--accent);
+    border-radius: 4px;
+    font-weight: bold;
+    font-family: 'Open Sans', sans-serif;
+    font-size: 14px;
+    background: rgba(255, 255, 255, 0.95);
+    color: var(--text-main);
+    outline: none;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    min-width: 200px;
+}
+.inline-text-editor:focus { border-style: solid; }
+
 /* Hierarquia de Z-Index para visualização do POP Flutuante sobrepondo tudo */
 .pop-group-container { position: relative; z-index: 1; }
 .pop-group-container:hover { z-index: 10; }
@@ -446,6 +464,13 @@ footer {
 /* Drag & Drop das Atividades para os Grupos de Etapas */
 .dragging-act { opacity: 0.5; transform: scale(0.98); }
 .drag-over-group { border: 2px dashed var(--accent) !important; background-color: #f0f7ff !important; }
+
+/* Drag & Drop da Matriz de Riscos */
+.dragging-matrix { opacity: 0.5; background-color: #f8fafc; }
+.drag-over-matrix td { border-bottom: 2px dashed var(--accent) !important; background-color: #f0f7ff !important; }
+.matrix-drag-handle { cursor: grab; color: #94a3b8; font-size: 1.2rem; margin-right: 8px; user-select: none; transition: color 0.2s; vertical-align: bottom; }
+.matrix-drag-handle:hover { color: var(--dark-accent); }
+.matrix-drag-handle:active { cursor: grabbing; }
 
 .pop-status-btn {
     font-size: 0.65rem;
