@@ -437,6 +437,33 @@ function renderAll() {
     checkDiagramAlerts();
 }
 
+function calculateTotalTime(model) {
+    let totalS = 0;
+    (model.activities || []).forEach(a => {
+        if (a.time) {
+            totalS += (a.time.d || 0) * 86400; // 1 Dia = 24h = 86400s
+            totalS += (a.time.h || 0) * 3600;
+            totalS += (a.time.m || 0) * 60;
+            totalS += (a.time.s || 0);
+        }
+    });
+    let str = '0s';
+    if (totalS > 0) {
+        let tempS = totalS;
+        let d = Math.floor(tempS / 86400); tempS %= 86400;
+        let h = Math.floor(tempS / 3600); tempS %= 3600;
+        let m = Math.floor(tempS / 60);
+        let s = tempS % 60;
+        str = '';
+        if (d > 0) str += `${d}d `;
+        if (h > 0) str += `${h}h `;
+        if (m > 0) str += `${m}m `;
+        if (s > 0 || str === '') str += `${s}s`;
+        str = str.trim();
+    }
+    return { str, sec: totalS };
+}
+
 function renderCompareSummary() {
     const asis = dbDesc.models['as-is'];
     const tobe = dbDesc.models['to-be'];
@@ -449,16 +476,45 @@ function renderCompareSummary() {
         return count;
     };
     
+    const timeAsIs = calculateTotalTime(asis);
+    const timeToBe = calculateTotalTime(tobe);
+    
+    const actsAsIs = asis.activities.length;
+    const actsToBe = tobe.activities.length;
+    
+    const risksAsIs = asis.risks.length;
+    const risksToBe = tobe.risks.length;
+    
+    const ctrlAsIs = countControls(asis);
+    const ctrlToBe = countControls(tobe);
+    
+    const highlight = 'background-color: #dcfce7; color: #166534 !important; padding: 0 6px; border-radius: 4px; border: 1px dashed #bbf7d0; display: inline-block;';
+    const highlightTie = 'background-color: #f1f5f9; color: #64748b !important; padding: 0 6px; border-radius: 4px; border: 1px dashed #cbd5e1; display: inline-block;';
+    
+    const sActsAsIs = actsAsIs < actsToBe ? highlight : (actsAsIs === actsToBe ? highlightTie : '');
+    const sActsToBe = actsToBe < actsAsIs ? highlight : (actsAsIs === actsToBe ? highlightTie : '');
+    
+    const sTimeAsIs = timeAsIs.sec < timeToBe.sec ? highlight : (timeAsIs.sec === timeToBe.sec ? highlightTie : '');
+    const sTimeToBe = timeToBe.sec < timeAsIs.sec ? highlight : (timeAsIs.sec === timeToBe.sec ? highlightTie : '');
+    
+    const sRisksAsIs = risksAsIs < risksToBe ? highlight : (risksAsIs === risksToBe ? highlightTie : '');
+    const sRisksToBe = risksToBe < risksAsIs ? highlight : (risksAsIs === risksToBe ? highlightTie : '');
+    
+    const sCtrlAsIs = ctrlAsIs < ctrlToBe ? highlight : (ctrlAsIs === ctrlToBe ? highlightTie : '');
+    const sCtrlToBe = ctrlToBe < ctrlAsIs ? highlight : (ctrlAsIs === ctrlToBe ? highlightTie : '');
+    
     document.getElementById('summary-asis').innerHTML = `
-        <p style="margin: 5px 0;"><strong>Atividades:</strong> <span style="color: var(--primary); font-size: 1.1rem; font-weight: 800;">${asis.activities.length}</span></p>
-        <p style="margin: 5px 0;"><strong>Riscos Identificados:</strong> <span style="color: var(--primary); font-size: 1.1rem; font-weight: 800;">${asis.risks.length}</span></p>
-        <p style="margin: 5px 0;"><strong>Controles (Marcações):</strong> <span style="color: var(--primary); font-size: 1.1rem; font-weight: 800;">${countControls(asis)}</span></p>
+        <p style="margin: 5px 0;"><strong>Atividades:</strong> <span style="color: var(--primary); font-size: 1.1rem; font-weight: 800; ${sActsAsIs}">${actsAsIs}</span></p>
+        <p style="margin: 5px 0;"><strong>Tempo Estimado:</strong> <span style="color: var(--primary); font-size: 1.1rem; font-weight: 800; ${sTimeAsIs}">${timeAsIs.str}</span></p>
+        <p style="margin: 5px 0;"><strong>Riscos Identificados:</strong> <span style="color: var(--primary); font-size: 1.1rem; font-weight: 800; ${sRisksAsIs}">${risksAsIs}</span></p>
+        <p style="margin: 5px 0;"><strong>Controles (Marcações):</strong> <span style="color: var(--primary); font-size: 1.1rem; font-weight: 800; ${sCtrlAsIs}">${ctrlAsIs}</span></p>
     `;
     
     document.getElementById('summary-tobe').innerHTML = `
-        <p style="margin: 5px 0;"><strong>Atividades:</strong> <span style="color: var(--accent); font-size: 1.1rem; font-weight: 800;">${tobe.activities.length}</span></p>
-        <p style="margin: 5px 0;"><strong>Riscos Identificados:</strong> <span style="color: var(--accent); font-size: 1.1rem; font-weight: 800;">${tobe.risks.length}</span></p>
-        <p style="margin: 5px 0;"><strong>Controles (Marcações):</strong> <span style="color: var(--accent); font-size: 1.1rem; font-weight: 800;">${countControls(tobe)}</span></p>
+        <p style="margin: 5px 0;"><strong>Atividades:</strong> <span style="color: var(--accent); font-size: 1.1rem; font-weight: 800; ${sActsToBe}">${actsToBe}</span></p>
+        <p style="margin: 5px 0;"><strong>Tempo Estimado:</strong> <span style="color: var(--accent); font-size: 1.1rem; font-weight: 800; ${sTimeToBe}">${timeToBe.str}</span></p>
+        <p style="margin: 5px 0;"><strong>Riscos Identificados:</strong> <span style="color: var(--accent); font-size: 1.1rem; font-weight: 800; ${sRisksToBe}">${risksToBe}</span></p>
+        <p style="margin: 5px 0;"><strong>Controles (Marcações):</strong> <span style="color: var(--accent); font-size: 1.1rem; font-weight: 800; ${sCtrlToBe}">${ctrlToBe}</span></p>
     `;
 }
 
@@ -478,8 +534,18 @@ function renderCompareActRisk(mode) {
             else if (a.noRisk) riskIcon = `✅ (0)`;
             else riskIcon = `(0)`;
             
+            let timeStr = '';
+            if (a.time && (a.time.d > 0 || a.time.h > 0 || a.time.m > 0 || a.time.s > 0)) {
+                timeStr = ` <span style="font-size: 0.6rem; color: #0284c7; font-weight: bold; background: #e0f2fe; padding: 1px 4px; border-radius: 4px; margin-left: 6px;">`;
+                if (a.time.d > 0) timeStr += `${a.time.d}d `;
+                if (a.time.h > 0) timeStr += `${a.time.h}h `;
+                if (a.time.m > 0) timeStr += `${a.time.m}m `;
+                if (a.time.s > 0) timeStr += `${a.time.s}s`;
+                timeStr = timeStr.trim() + `</span>`;
+            }
+            
             html += `<div class="mini-card" style="background: #fff; margin-bottom: 5px; font-size: 0.75rem; display: flex; justify-content: space-between; align-items: center;">
-                <span style="font-weight: 600; color: #475569;">${a.name}</span>
+                <span style="font-weight: 600; color: #475569;">${a.name}${timeStr}</span>
                 <span style="color: var(--dark-accent); font-weight: bold;">${riskIcon}</span>
             </div>`;
         });
@@ -589,16 +655,37 @@ function renderComparePop(mode) {
     container.innerHTML = html;
 }
 
+function formatTimeStr(timeObj) {
+    if (!timeObj || (!timeObj.d && !timeObj.h && !timeObj.m && !timeObj.s)) return '';
+    let str = `<span style="font-size: 0.6rem; color: #0284c7; font-weight: bold; background: #e0f2fe; padding: 2px 6px; border-radius: 12px; margin-left: 6px; white-space: nowrap;">⏱️ `;
+    if (timeObj.d > 0) str += `${timeObj.d}d `;
+    if (timeObj.h > 0) str += `${timeObj.h}h `;
+    if (timeObj.m > 0) str += `${timeObj.m}m `;
+    if (timeObj.s > 0) str += `${timeObj.s}s`;
+    return str.trim() + `</span>`;
+}
+
+window.updateActTime = function(actId, field, val) {
+    const act = dbDesc.models[dbDesc.activeView].activities.find(a => a.id === actId);
+    if (act) {
+        if (!act.time) act.time = { d: 0, h: 0, m: 0, s: 0 };
+        act.time[field] = parseInt(val) || 0;
+        saveDesc();
+        renderActivityList();
+    }
+};
+
 function addActivity() {
     const inp = document.getElementById('new-activity-desc');
-    if (!inp.value.trim()) return;
+    if (!inp || !inp.value.trim()) return;
     
     const newAct = {
         id: 'act_' + Date.now(),
         name: inp.value.trim(),
         riskAssocs: [],
         noRisk: false,
-        steps: []
+        steps: [],
+        time: { d: 0, h: 0, m: 0, s: 0 }
     };
     
     dbDesc.models[dbDesc.activeView].activities.push(newAct);
@@ -625,6 +712,20 @@ function renderActivityList() {
     const btnLinkAllActs = document.getElementById('btn-link-all-acts');
     const addWrapper = document.getElementById('activity-add-wrapper');
     const linkWrapper = document.getElementById('activity-link-wrapper');
+    
+    let btnUnlinkAllActs = document.getElementById('btn-unlink-all-acts');
+    if (btnLinkAllActs && !btnUnlinkAllActs) {
+        btnUnlinkAllActs = document.createElement('button');
+        btnUnlinkAllActs.id = 'btn-unlink-all-acts';
+        btnUnlinkAllActs.className = 'btn-edit-action';
+        btnUnlinkAllActs.style.marginLeft = '8px';
+        btnUnlinkAllActs.style.backgroundColor = '#fee2e2';
+        btnUnlinkAllActs.style.color = '#991b1b';
+        btnUnlinkAllActs.innerText = 'Desvincular Todas';
+        btnUnlinkAllActs.onclick = unlinkRiskFromAllActs;
+        btnLinkAllActs.parentNode.insertBefore(btnUnlinkAllActs, btnLinkAllActs.nextSibling);
+    }
+
     const acts = dbDesc.models[dbDesc.activeView].activities;
     const allRisks = dbDesc.models[dbDesc.activeView].risks;
     let html = '';
@@ -633,6 +734,7 @@ function renderActivityList() {
         title.innerText = 'Atividades do Risco Selecionado';
         btnBack.style.display = 'inline-block';
         if (btnLinkAllActs) btnLinkAllActs.style.display = 'inline-block';
+        if (btnUnlinkAllActs) btnUnlinkAllActs.style.display = 'inline-block';
         addWrapper.style.display = 'none';
         
         const availableActs = acts.filter(a => !a.noRisk && !a.riskAssocs.find(ra => ra.riskId === selectedRiskId));
@@ -671,10 +773,11 @@ function renderActivityList() {
                 riskIcon = `<span title="Nenhum risco associado" style="font-size:0.8rem; margin-right:6px; cursor:help; font-weight:bold; color:var(--dark-accent);">(0)</span>`;
             }
             
+            const timeStr = formatTimeStr(a.time);
             html += `<div class="mini-card hover-trigger" style="background:${bg}; color:${col}; cursor:pointer; align-items:center;" onclick="selectActivity('${a.id}')">
                 <div style="flex:1; display:flex; align-items:center;">
                     ${riskIcon}
-                    <b style="font-size:0.75rem; display:block; word-break:break-word; flex:1;">${a.name}</b>
+                    <b style="font-size:0.75rem; display:block; word-break:break-word; flex:1;">${a.name}${timeStr}</b>
                 </div>
                 <div class="no-print hover-target" style="top:50%; transform:translateY(-50%); right:4px; align-items:center;">
                     <span style="cursor:pointer; color:#ef4444; font-size:1.1rem; line-height:1;" onclick="event.stopPropagation(); removeRisk('${a.id}', '${selectedRiskId}')" title="Desvincular">✕</span>
@@ -685,6 +788,7 @@ function renderActivityList() {
         title.innerText = 'Atividades do Modelo';
         btnBack.style.display = 'none';
         if (btnLinkAllActs) btnLinkAllActs.style.display = 'none';
+        if (btnUnlinkAllActs) btnUnlinkAllActs.style.display = 'none';
         addWrapper.style.display = 'flex';
         linkWrapper.style.display = 'none';
         
@@ -712,10 +816,11 @@ function renderActivityList() {
                 riskIcon = `<span title="Nenhum risco associado" style="font-size:0.8rem; margin-right:6px; cursor:help; font-weight:bold; color:var(--dark-accent);">(0)</span>`;
             }
             
+            const timeStr = formatTimeStr(a.time);
             html += `<div class="mini-card hover-trigger" style="background:${bg}; color:${col}; cursor:pointer; align-items:center;" onclick="selectActivity('${a.id}')">
                 <div style="flex:1; display:flex; align-items:center;">
                     ${riskIcon}
-                    <b style="font-size:0.75rem; display:block; word-break:break-word; flex:1;">${a.name}</b>
+                    <b style="font-size:0.75rem; display:block; word-break:break-word; flex:1;">${a.name}${timeStr}</b>
                 </div>
                 <div class="no-print hover-target" style="top:50%; transform:translateY(-50%); right:4px; align-items:center;">
                     <span style="cursor:pointer; color:#ef4444; font-size:1.1rem; line-height:1;" onclick="event.stopPropagation(); removeActivity('${a.id}')" title="Excluir">✕</span>
@@ -758,15 +863,42 @@ function renderRiskList() {
     const addWrapper = document.getElementById('risk-add-wrapper');
     const chkNoRisk = document.getElementById('chk-no-risk');
     
+    let btnUnlinkAllRisks = document.getElementById('btn-unlink-all-risks');
+    if (btnLinkAllRisks && !btnUnlinkAllRisks) {
+        btnUnlinkAllRisks = document.createElement('button');
+        btnUnlinkAllRisks.id = 'btn-unlink-all-risks';
+        btnUnlinkAllRisks.className = 'btn-edit-action';
+        btnUnlinkAllRisks.style.marginLeft = '8px';
+        btnUnlinkAllRisks.style.backgroundColor = '#fee2e2';
+        btnUnlinkAllRisks.style.color = '#991b1b';
+        btnUnlinkAllRisks.innerText = 'Desvincular Todos';
+        btnUnlinkAllRisks.onclick = unlinkActFromAllRisks;
+        btnLinkAllRisks.parentNode.insertBefore(btnUnlinkAllRisks, btnLinkAllRisks.nextSibling);
+    }
+    
+    let timeContainer = document.getElementById('act-time-container');
+    if (!timeContainer) {
+        timeContainer = document.createElement('div');
+        timeContainer.id = 'act-time-container';
+        timeContainer.style.marginBottom = '15px';
+        timeContainer.style.padding = '10px';
+        timeContainer.style.background = '#f0f7ff';
+        timeContainer.style.border = '1px solid #bae6fd';
+        timeContainer.style.borderRadius = '6px';
+        if (addWrapper) addWrapper.parentNode.insertBefore(timeContainer, addWrapper);
+    }
+
     const allRisks = dbDesc.models[dbDesc.activeView].risks;
     
     if (!selectedActivityId) {
         // Modo Banco de Riscos
         actContainer.style.display = 'none';
+        if (timeContainer) timeContainer.style.display = 'none';
         bankContainer.style.display = 'block';
         title.innerText = 'Riscos do Processo';
         btnBack.style.display = 'none';
         if (btnLinkAllRisks) btnLinkAllRisks.style.display = 'none';
+        if (btnUnlinkAllRisks) btnUnlinkAllRisks.style.display = 'none';
         
         const gList = document.getElementById('global-risk-list');
         let html = '';
@@ -814,16 +946,43 @@ function renderRiskList() {
     
     const act = dbDesc.models[dbDesc.activeView].activities.find(a => a.id === selectedActivityId);
     
+    if (timeContainer) {
+        timeContainer.style.display = 'block';
+        timeContainer.innerHTML = `
+            <div style="font-size: 0.65rem; font-weight: 700; color: #0284c7; text-transform: uppercase; margin-bottom: 6px;">Tempo Estimado da Atividade</div>
+            <div style="display: flex; gap: 8px; align-items: center;">
+                <div style="display: flex; flex-direction: column; align-items: center;">
+                    <input type="number" min="0" id="time-d-${act.id}" value="${act.time?.d || 0}" onchange="updateActTime('${act.id}', 'd', this.value)" style="width: 40px; padding: 4px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.75rem; text-align: center;">
+                    <span style="font-size: 0.6rem; color: #475569; margin-top: 2px;">Dias</span>
+                </div>
+                <div style="display: flex; flex-direction: column; align-items: center;">
+                    <input type="number" min="0" id="time-h-${act.id}" value="${act.time?.h || 0}" onchange="updateActTime('${act.id}', 'h', this.value)" style="width: 40px; padding: 4px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.75rem; text-align: center;">
+                    <span style="font-size: 0.6rem; color: #475569; margin-top: 2px;">Horas</span>
+                </div>
+                <div style="display: flex; flex-direction: column; align-items: center;">
+                    <input type="number" min="0" id="time-m-${act.id}" value="${act.time?.m || 0}" onchange="updateActTime('${act.id}', 'm', this.value)" style="width: 40px; padding: 4px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.75rem; text-align: center;">
+                    <span style="font-size: 0.6rem; color: #475569; margin-top: 2px;">Min</span>
+                </div>
+                <div style="display: flex; flex-direction: column; align-items: center;">
+                    <input type="number" min="0" id="time-s-${act.id}" value="${act.time?.s || 0}" onchange="updateActTime('${act.id}', 's', this.value)" style="width: 40px; padding: 4px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.75rem; text-align: center;">
+                    <span style="font-size: 0.6rem; color: #475569; margin-top: 2px;">Seg</span>
+                </div>
+            </div>
+        `;
+    }
+
     chkNoRisk.checked = act.noRisk || false;
     
     if (act.noRisk) {
         addWrapper.style.display = 'none';
         if (btnLinkAllRisks) btnLinkAllRisks.style.display = 'none';
+        if (btnUnlinkAllRisks) btnUnlinkAllRisks.style.display = 'none';
         list.innerHTML = '<span class="empty-msg" style="background: #f0fdf4; border-color: #bbf7d0; color: #166534;">✅ Atividade marcada como sem riscos.</span>';
         return;
     }
     
     if (btnLinkAllRisks) btnLinkAllRisks.style.display = 'inline-block';
+    if (btnUnlinkAllRisks) btnUnlinkAllRisks.style.display = 'inline-block';
     addWrapper.style.display = 'flex';
     let html = '';
     
@@ -859,6 +1018,7 @@ function renderRiskList() {
 
 function addGlobalRisk() {
     const inp = document.getElementById('new-global-risk-desc');
+    if (!inp) return;
     const desc = inp.value.trim();
     if (!desc) return;
     
@@ -900,6 +1060,7 @@ function removeGlobalRisk(rId) {
 
 function addRisk() {
     const inp = document.getElementById('new-risk-desc');
+    if (!inp) return;
     const desc = inp.value.trim();
     if (!desc || !selectedActivityId) return;
     const act = dbDesc.models[dbDesc.activeView].activities.find(a => a.id === selectedActivityId);
@@ -960,6 +1121,44 @@ function linkActToAllRisks() {
         showToast(`Atividade vinculada a ${count} risco(s).`, "success");
     } else {
         showToast("Esta atividade já possui todos os riscos vinculados.", "info");
+    }
+}
+
+function unlinkRiskFromAllActs() {
+    if (!selectedRiskId) return;
+    if (!confirm("Tem certeza que deseja desvincular este risco de TODAS as atividades?")) return;
+    const acts = dbDesc.models[dbDesc.activeView].activities;
+    let count = 0;
+    acts.forEach(a => {
+        if (a.riskAssocs) {
+            const initialLen = a.riskAssocs.length;
+            a.riskAssocs = a.riskAssocs.filter(ra => ra.riskId !== selectedRiskId);
+            if (a.riskAssocs.length < initialLen) count++;
+        }
+    });
+    if (count > 0) {
+        saveDesc();
+        renderAll();
+        showToast(`Risco desvinculado de ${count} atividade(s).`, "success");
+    } else {
+        showToast("Este risco não está vinculado a nenhuma atividade.", "info");
+    }
+}
+
+function unlinkActFromAllRisks() {
+    if (!selectedActivityId) return;
+    if (!confirm("Tem certeza que deseja desvincular TODOS os riscos desta atividade?")) return;
+    const act = dbDesc.models[dbDesc.activeView].activities.find(a => a.id === selectedActivityId);
+    if (!act || act.noRisk) return;
+    
+    if (act.riskAssocs && act.riskAssocs.length > 0) {
+        const count = act.riskAssocs.length;
+        act.riskAssocs = [];
+        saveDesc();
+        renderAll();
+        showToast(`Atividade desvinculada de ${count} risco(s).`, "success");
+    } else {
+        showToast("Esta atividade não possui riscos vinculados.", "info");
     }
 }
 

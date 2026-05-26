@@ -646,13 +646,16 @@ function render() {
             const idx = db.sec2.indexOf(it);
             const isEditing = (editState['s2'] === idx);
             const editClass = isEditing ? 'editing-card' : '';
-            htmlSwotTable += `<tr class="${editClass}">
+        htmlSwotTable += `<tr class="${editClass} hover-trigger">
                 <td><b>${swotMap[it.cat].n}</b></td>
                 <td><span style="font-size:0.7rem; color:#64748b; font-weight:bold">${swotMap[it.cat].t}</span></td>
                 <td>${it.val}</td>
-                <td class="no-print">
-                    <span style="cursor:pointer; color:#0284c7; margin-right:10px;" onclick="editItem('sec2',${idx},'s2')" title="Editar">✎</span>
-                    <span style="cursor:pointer; color:red;" onclick="remove('sec2',${idx})" title="Excluir">✕</span>
+            <td class="no-print" style="position: relative; text-align: center;">
+                <span style="color: #cbd5e1; font-size: 1.2rem; cursor: help;" title="Passe o mouse para opções">...</span>
+                <div class="no-print hover-target" style="top: 50%; transform: translateY(-50%); right: 15px; margin: 0;">
+                    <span style="cursor:pointer; color:#0284c7; font-size: 1.1rem; line-height: 1;" onclick="editItem('sec2',${idx},'s2')" title="Editar">✎</span>
+                    <span style="cursor:pointer; color:#ef4444; font-size: 1.1rem; line-height: 1; margin-left: 8px;" onclick="remove('sec2',${idx})" title="Excluir">✕</span>
+                </div>
                 </td>
             </tr>`;
         });
@@ -942,13 +945,16 @@ function updateTimeline() {
                 </div>`;
             }
 
-            htmlTable += `<tr class="${tableRowClass}">
+        htmlTable += `<tr class="${tableRowClass} hover-trigger">
                 <td><b>0${step.i} - ${step.name}</b></td>
                 <td>${startStr}</td>
                 <td>${endStr}</td>
                 <td>${dur}</td>
-                <td class="no-print">
-                    <span style="cursor:pointer; color:#0284c7; font-size: 1rem;" onclick="editTimeStep(${step.i})" title="Editar">✎</span>
+            <td class="no-print" style="position: relative; text-align: center;">
+                <span style="color: #cbd5e1; font-size: 1.2rem; cursor: help;" title="Passe o mouse para opções">...</span>
+                <div class="no-print hover-target" style="top: 50%; transform: translateY(-50%); right: 15px; margin: 0;">
+                    <span style="cursor:pointer; color:#0284c7; font-size: 1.1rem; line-height: 1;" onclick="editTimeStep(${step.i})" title="Editar">✎</span>
+                </div>
                 </td>
             </tr>`;
         });

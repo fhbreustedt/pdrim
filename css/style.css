@@ -186,7 +186,7 @@ footer {
    ========================================= */
 .button-group { display: flex; gap: 10px; flex-wrap: wrap; }
 .btn-main { padding: 10px 18px; border-radius: 5px; cursor: pointer; font-size: 0.8rem; display: flex; align-items: center; gap: 8px; transition: opacity 0.3s; text-decoration: none; background-color: #ffffff; color: #334155; font-weight: 500; border: 1px solid #cbd5e1; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
-.btn-main:hover { background-color: #e2e8f0; color: #0f172a; border-color: #64748b; opacity: 1; }
+.btn-main:hover { background-color: #f8fafc; color: var(--text-main); border-color: #94a3b8; opacity: 1; }
 .btn-danger { background-color: #ffffff; color: #991b1b; font-weight: 500; border: 1px solid #e2e8f0; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
 .btn-danger:hover { background-color: #fee2e2; color: #7f1d1d; border-color: #f87171; opacity: 1; }
 .btn-secondary { background-color: #ffffff; color: #64748b; font-weight: 500; border: 1px solid #e2e8f0; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
@@ -208,7 +208,7 @@ footer {
 .empty-msg { box-shadow: 0 1px 2px rgba(0,0,0,0.05); background: #ffffff; color: #94a3b8; padding: 3px 10px; border-radius: 12px; font-size: 0.7rem; font-weight: 600; display: inline-block; border: 1px dashed #cbd5e1; font-style: normal; }
 
 .hover-trigger { position: relative; }
-.hover-trigger .hover-target { position: absolute; top: 8px; right: 8px; z-index: 10; background: rgba(255, 255, 255, 0.95); padding: 4px 6px; border-radius: 4px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); display: flex; gap: 6px; opacity: 0; visibility: hidden; transition: opacity 0.2s, visibility 0.2s; pointer-events: none; }
+.hover-trigger .hover-target { position: absolute; top: 8px; right: 8px; z-index: 10; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(4px); border: 1px solid var(--border-color); padding: 6px 8px; border-radius: 6px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1); display: flex; gap: 8px; opacity: 0; visibility: hidden; transition: opacity 0.2s, visibility 0.2s; pointer-events: none; }
 .hover-trigger:hover .hover-target { opacity: 1; visibility: visible; pointer-events: auto; }
 
 #toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; }
@@ -265,6 +265,10 @@ footer {
 .marker.mid { width: 12px; height: 12px; background: #94a3b8; border-radius: 2px; }
 .tm-right { width: 80%; padding-left: 40px; box-sizing: border-box; }
 
+/* Elevação de z-index no hover para que os Tooltips sobreponham os próximos itens */
+.tm-item:hover, .action-card-item:hover, .action-row:hover { z-index: 50; }
+.action-row { position: relative; }
+
 /* Timeline Card Genérico */
 .timeline-card { padding: 18px; border-radius: 8px; border: 1px solid rgba(0,0,0,0.05); position: relative; transition: 0.3s; text-align: left; box-shadow: none; margin: 0; }
 .timeline-card:hover { transform: translateY(-3px); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
@@ -292,8 +296,8 @@ footer {
 .grid-artifacts .card[data-step="R"] .custom-icon { fill: #f4d03f; }
 .grid-artifacts .card[data-step="I"] .custom-icon { fill: #ec7063; }
 .grid-artifacts .card[data-step="M"] .custom-icon { fill: #af7ac5; }
-.grid-artifacts .custom-icon { width: 80px; height: 80px; display: flex; margin: 0 auto 0 auto; }
-.grid-artifacts .custom-icon:hover { fill: #000; }
+.grid-artifacts .custom-icon { width: 80px; height: 80px; display: flex; margin: 0 auto 0 auto; transition: opacity 0.2s, transform 0.2s; }
+.grid-artifacts .custom-icon:hover { opacity: 0.8; transform: scale(1.05); }
 .grid-artifacts .card-links { display: flex; justify-content: center; align-items: center; margin-top: 1.5rem; gap: 6px; flex-wrap: wrap; }
 .grid-artifacts .card-links .btn { margin-top: 0; font-size: 0.6rem; padding: 0.4rem 0.4rem; }
 .grid-artifacts .btn { display: inline-block; margin-top: 1rem; padding: 0.6rem 1.2rem; background-color: #f0f0f0; color: #666; text-decoration: none; border-radius: 8px; font-size: 0.9rem; transition: background 0.3s; }
@@ -448,14 +452,15 @@ footer {
 .media-hover-trigger { position: relative; display: inline-flex; align-items: center; cursor: pointer; color: var(--accent); }
 .media-preview-box {
     display: none; position: absolute; bottom: 120%; left: 50%; transform: translateX(-50%);
-    background: #fff; border: 1px solid #cbd5e1; box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(4px);
+    border: 1px solid var(--border-color); box-shadow: 0 4px 15px rgba(0,0,0,0.1);
     padding: 5px; z-index: 1000; border-radius: 8px;
     width: 320px;
 }
 .media-hover-trigger:hover .media-preview-box { display: block; }
 .media-preview-box::after {
     content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
-    border-width: 8px; border-style: solid; border-color: #cbd5e1 transparent transparent transparent;
+    border-width: 8px; border-style: solid; border-color: rgba(255, 255, 255, 0.95) transparent transparent transparent;
 }
 .media-preview-box iframe { width: 100%; height: 180px; border: none; border-radius: 4px; background: #000; }
 .media-preview-box video { width: 100%; max-height: 200px; border-radius: 4px; background: #000; }
@@ -573,8 +578,10 @@ footer {
     bottom: 135%;
     left: 50%;
     transform: translateX(-50%);
-    background-color: var(--dark-accent);
-    color: #fff;
+    background-color: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(4px);
+    color: var(--text-main);
+    border: 1px solid var(--border-color);
     text-align: left;
     padding: 8px 12px;
     border-radius: 6px;
@@ -583,7 +590,7 @@ footer {
     white-space: normal;
     min-width: 200px;
     max-width: 300px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
     transition: opacity 0.2s, visibility 0.2s;
     pointer-events: none;
 }
@@ -595,13 +602,25 @@ footer {
     margin-left: -6px;
     border-width: 6px;
     border-style: solid;
-    border-color: var(--dark-accent) transparent transparent transparent;
+    border-color: rgba(255, 255, 255, 0.95) transparent transparent transparent;
+}
+.custom-tooltip::before {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -7px;
+    border-width: 7px;
+    border-style: solid;
+    border-color: var(--border-color) transparent transparent transparent;
+    z-index: -1;
 }
 .custom-tooltip-container.pinned .custom-tooltip,
 .custom-tooltip-container.hovered .custom-tooltip {
     visibility: visible;
     opacity: 1;
 }
+.custom-tooltip-container.pinned, .custom-tooltip-container.hovered { z-index: 1000; }
 
 /* =========================================
    8. IMPRESSÃO E GERAÇÃO NATIVA DE PDF
@@ -681,6 +700,17 @@ footer {
     .container, .preparar-wrapper, .racionalizar { max-width: 100% !important; margin: 0 !important; padding: 0 !important; }
     
     .section, .content-box, .timeline-card, .t-step { break-inside: avoid; page-break-inside: avoid; }
+}
+
+/* Configuração de Paged Media para numeração de páginas (Padrão W3C) */
+@page {
+    margin-bottom: 15mm;
+    @bottom-right {
+        content: "Pg " counter(page) " de " counter(pages);
+        font-family: 'Open Sans', sans-serif;
+        font-size: 10px;
+        color: #64748b;
+    }
 }
 
 /* =========================================

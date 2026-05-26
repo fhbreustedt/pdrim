@@ -582,8 +582,6 @@ function getIndicatorHtml(indicatorData, linkedItem) {
         if (linkedItem && linkedItem.startsWith('act_')) prefix = 'KPI';
         else if (linkedItem && linkedItem.startsWith('risk_')) prefix = 'KRI';
 
-        tooltipContent += `<div style="padding: 5px 0; border-bottom: 1px dashed rgba(255,255,255,0.2);">`;
-        if (ind.name) tooltipContent += `<strong style="color: #fff;">${prefix}:</strong> ${ind.name}`;
         tooltipContent += `<div style="padding: 5px 0; border-bottom: 1px dashed var(--border-color);">`;
         if (ind.name) tooltipContent += `<strong style="color: var(--dark-accent);">${prefix}:</strong> ${ind.name}`;
         
@@ -602,7 +600,6 @@ function getIndicatorHtml(indicatorData, linkedItem) {
     if (tooltipContent.endsWith('</div>')) {
         const lastBorderIndex = tooltipContent.lastIndexOf(' border-bottom');
         if (lastBorderIndex > -1) {
-            tooltipContent = tooltipContent.substring(0, lastBorderIndex) + tooltipContent.substring(lastBorderIndex).replace(' border-bottom: 1px dashed rgba(255,255,255,0.2);', '');
             tooltipContent = tooltipContent.substring(0, lastBorderIndex) + tooltipContent.substring(lastBorderIndex).replace(' border-bottom: 1px dashed var(--border-color);', '');
         }
     }
@@ -781,9 +778,12 @@ function renderTimeline(data) {
                         <div class="card-content">${ev.desc}</div>
                     </div>
                     <div class="timeline-text-view hover-trigger" id="text-view-${index}" style="display: ${timelineExpandedAll ? 'none' : 'flex'}; align-items: center; gap: 8px; width: 100%; position: relative;">
-                        <span class="cat-badge" style="background: ${categories[ev.cat]};">${ev.cat}</span>
-                        <span style="font-weight: 600; color: var(--dark-accent); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 10px;">${actionTextLabel}: ${ev.title}${linkedIcon}${indicatorIcon} <span class="no-print action-link" style="font-size:0.75rem; color: var(--accent); text-decoration: underline; cursor: pointer;" onclick="toggleCardExpansion(${index}, true)">(Ver detalhes)</span></span>
-                        <div class="status-tag tag-${ev.status}" title="Alterar status" onclick="showStatusSelectInTimeline(${ev.id}, '${ev.status}', this)" style="margin-right: 35px;">
+                        <span class="cat-badge" style="background: ${categories[ev.cat]}; flex-shrink: 0;">${ev.cat}</span>
+                        <div style="font-weight: 600; color: var(--dark-accent); flex: 1; display: flex; align-items: center; min-width: 0; padding-right: 10px;">
+                            <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-right: 6px;">${actionTextLabel}: ${ev.title}</span>
+                            <span style="flex-shrink: 0; display: flex; align-items: center;">${linkedIcon}${indicatorIcon} <span class="no-print action-link" style="font-size:0.75rem; color: var(--accent); text-decoration: underline; cursor: pointer; margin-left: 6px;" onclick="toggleCardExpansion(${index}, true)">(Ver detalhes)</span></span>
+                        </div>
+                        <div class="status-tag tag-${ev.status}" title="Alterar status" onclick="showStatusSelectInTimeline(${ev.id}, '${ev.status}', this)" style="margin-right: 35px; flex-shrink: 0;">
                             ${ev.status}
                             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
                         </div>
@@ -894,7 +894,7 @@ function renderTable(data) {
         const titleHtml = `<div>${action.title}${linkedIcon}${indicatorIcon}</div>`;
 
         root.insertAdjacentHTML('beforeend', `
-            <tr class="action-row ${action.status} ${tableRowClass} ${tableRowDeleteClass}" id="row-${action.id}">
+            <tr class="action-row hover-trigger ${action.status} ${tableRowClass} ${tableRowDeleteClass}" id="row-${action.id}">
                 <td><input type="checkbox" class="delete-checkbox" value="${action.id}" onchange="handleCheckboxChange(this)" ${checkedAttr}></td>
                 <td>${titleHtml}</td>
                 <td>${action.cat}</td>
@@ -906,9 +906,12 @@ function renderTable(data) {
                         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
                     </div>
                 </td>
-                <td>
-                    <button class="btn-edit-action" onclick="editAction(${action.id})">EDITAR</button>
-                    <button class="btn-edit-action" style="background: #fee2e2; color: #991b1b; margin-left: 4px;" onclick="deleteSingleAction(${action.id})">EXCLUIR</button>
+                <td class="no-print" style="position: relative; text-align: center;">
+                    <span style="color: #cbd5e1; font-size: 1.2rem; cursor: help;" title="Passe o mouse para opções">...</span>
+                    <div class="no-print hover-target" style="top: 50%; transform: translateY(-50%); right: 15px; margin: 0;">
+                        <span style="cursor:pointer; color:#0284c7; font-size: 1.1rem; line-height: 1;" onclick="editAction(${action.id})" title="Editar">✎</span>
+                        <span style="cursor:pointer; color:#ef4444; font-size: 1.1rem; line-height: 1; margin-left: 8px;" onclick="deleteSingleAction(${action.id})" title="Excluir">✕</span>
+                    </div>
                 </td>
             </tr>
         `);
