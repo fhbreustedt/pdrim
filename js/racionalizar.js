@@ -237,9 +237,48 @@ function showStatusSelectInTimeline(id, currentStatus, element) {
     setTimeout(() => sel.focus(), 10);
 }
 
+function getIndicatorFieldHtml(data = {}) {
+    const id = `ind_${Date.now()}_${Math.random()}`;
+    return `
+        <div class="indicator-entry" style="background: #fff; padding: 10px; border-radius: 4px; border: 1px solid #e9d5ff;">
+            <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr auto; gap: 12px; align-items: flex-end;">
+                <div>
+                    <label for="indName_${id}">Nome do Indicador</label>
+                    <input type="text" class="indName" id="indName_${id}" placeholder="Ex: Número de incidentes..." value="${data.name || ''}">
+                </div>
+                <div>
+                    <label for="indMeta_${id}">Meta</label>
+                    <input type="number" class="indMeta" id="indMeta_${id}" step="any" placeholder="Ex: 1" value="${data.meta || ''}">
+                </div>
+                <div>
+                    <label for="indUnit_${id}">Unidade</label>
+                    <input type="text" class="indUnit" id="indUnit_${id}" placeholder="Ex: %" value="${data.unit || ''}">
+                </div>
+                <div>
+                    <label for="indMin_${id}">Mínimo</label>
+                    <input type="number" class="indMin" id="indMin_${id}" step="any" placeholder="Ex: 0" value="${data.min || ''}">
+                </div>
+                <div>
+                    <label for="indMax_${id}">Máximo</label>
+                    <input type="number" class="indMax" id="indMax_${id}" step="any" placeholder="Ex: 3" value="${data.max || ''}">
+                </div>
+                <button type="button" class="btn-main btn-danger" style="padding: 8px 10px; font-size: 0.7rem;" onclick="this.parentElement.parentElement.remove()">✕</button>
+            </div>
+        </div>
+    `;
+}
+
+function addIndicatorField(data = {}) {
+    const list = document.getElementById('indicator-list');
+    if (list) {
+        list.insertAdjacentHTML('beforeend', getIndicatorFieldHtml(data));
+    }
+}
+
 function handleCategoryChange() {
     const cat = document.getElementById('cat').value;
     let container = document.getElementById('link-container');
+    const indicatorFields = document.getElementById('indicator-fields');
     
     if (!container) {
         const formRow1 = document.querySelector('.form-row-1');
@@ -251,6 +290,18 @@ function handleCategoryChange() {
         }
     }
     
+    if (indicatorFields) {
+        if (cat === 'Metas e Indicadores') {
+            indicatorFields.style.display = 'flex';
+            const list = document.getElementById('indicator-list');
+            if (list && list.children.length === 0) {
+                addIndicatorField();
+            }
+        } else {
+            indicatorFields.style.display = 'none';
+        }
+    }
+
     if (!container || !sourceDataDesc) return;
 
     if (cat === 'Tratamento de Riscos') {
@@ -295,7 +346,7 @@ function handleCategoryChange() {
 }
 
 function openNewForm() { resetForm(); document.getElementById('formTitle').innerText = 'Nova Ação'; document.getElementById('formContainer').style.display = 'block'; window.scrollTo(0,0); handleCategoryChange(); }
-function resetForm() { document.getElementById('formContainer').style.display = 'none'; document.getElementById('pdrimForm').reset(); document.getElementById('editId').value = ''; quill.setContents([]); handleCategoryChange(); render(); }
+function resetForm() { document.getElementById('formContainer').style.display = 'none'; document.getElementById('pdrimForm').reset(); document.getElementById('editId').value = ''; quill.setContents([]); const indicatorList = document.getElementById('indicator-list'); if (indicatorList) indicatorList.innerHTML = ''; handleCategoryChange(); render(); }
 
 function openNewFormWithCategory(cat) {
     openNewForm();
@@ -318,6 +369,12 @@ function editAction(id) {
     if (linkedItemSel && action.linkedItem) {
         linkedItemSel.value = action.linkedItem;
     }
+    const indicatorList = document.getElementById('indicator-list');
+    if (indicatorList) indicatorList.innerHTML = '';
+
+    if (action.indicatorData && Array.isArray(action.indicatorData)) {
+        action.indicatorData.forEach(indData => addIndicatorField(indData));
+    }
     document.getElementById('start').value = startAction ? startAction.date : '';
     document.getElementById('end').value = endAction ? endAction.date : (startAction ? startAction.date : '');
     quill.root.innerHTML = action.desc;
@@ -338,7 +395,23 @@ document.getElementById('pdrimForm').addEventListener('submit', function(e) {
         if (linkedItemSel) linkedItem = linkedItemSel.value;
     }
 
-    const common = { id: editId ? parseInt(editId) : Date.now(), title: document.getElementById('title').value, cat: document.getElementById('cat').value, desc: quill.root.innerHTML, status: 'pendente', linkedItem: linkedItem };
+    let indicatorData = [];
+    if (document.getElementById('cat').value === 'Metas e Indicadores') {
+        const entries = document.querySelectorAll('#indicator-list .indicator-entry');
+        entries.forEach(entry => {
+            const name = entry.querySelector('.indName').value;
+            const meta = entry.querySelector('.indMeta').value;
+            const unit = entry.querySelector('.indUnit').value;
+            const min = entry.querySelector('.indMin').value;
+            const max = entry.querySelector('.indMax').value;
+
+            if (name || meta || unit || min || max) {
+                indicatorData.push({ name, meta, unit, min, max });
+            }
+        });
+    }
+
+    const common = { id: editId ? parseInt(editId) : Date.now(), title: document.getElementById('title').value, cat: document.getElementById('cat').value, desc: quill.root.innerHTML, status: 'pendente', linkedItem: linkedItem, indicatorData: indicatorData };
     if(editId) flatActions = flatActions.filter(a => a.id != editId);
     const s = document.getElementById('start').value;
     const en = document.getElementById('end').value;
@@ -500,6 +573,46 @@ function getLinkedItemName(linkedItem) {
     return '';
 }
 
+function getIndicatorHtml(indicatorData, linkedItem) {
+    if (!indicatorData || !Array.isArray(indicatorData) || indicatorData.length === 0) return '';
+
+    let tooltipContent = '';
+    indicatorData.forEach(ind => {
+        let prefix = 'Indicador';
+        if (linkedItem && linkedItem.startsWith('act_')) prefix = 'KPI';
+        else if (linkedItem && linkedItem.startsWith('risk_')) prefix = 'KRI';
+
+        tooltipContent += `<div style="padding: 5px 0; border-bottom: 1px dashed rgba(255,255,255,0.2);">`;
+        if (ind.name) tooltipContent += `<strong style="color: #fff;">${prefix}:</strong> ${ind.name}`;
+        tooltipContent += `<div style="padding: 5px 0; border-bottom: 1px dashed var(--border-color);">`;
+        if (ind.name) tooltipContent += `<strong style="color: var(--dark-accent);">${prefix}:</strong> ${ind.name}`;
+        
+        let stats = [];
+        if (ind.min !== '' && ind.min !== null) stats.push(`<b>Mín:</b> ${ind.min}`);
+        if (ind.max !== '' && ind.max !== null) stats.push(`<b>Máx:</b> ${ind.max}`);
+        if (ind.meta !== '' && ind.meta !== null) stats.push(`<b>Meta:</b> ${ind.meta}${ind.unit ? ind.unit : ''}`);
+        
+        if (stats.length > 0) {
+            if (ind.name) tooltipContent += `<br>`;
+            tooltipContent += stats.join(' | ');
+        }
+        tooltipContent += `</div>`;
+    });
+    
+    if (tooltipContent.endsWith('</div>')) {
+        const lastBorderIndex = tooltipContent.lastIndexOf(' border-bottom');
+        if (lastBorderIndex > -1) {
+            tooltipContent = tooltipContent.substring(0, lastBorderIndex) + tooltipContent.substring(lastBorderIndex).replace(' border-bottom: 1px dashed rgba(255,255,255,0.2);', '');
+            tooltipContent = tooltipContent.substring(0, lastBorderIndex) + tooltipContent.substring(lastBorderIndex).replace(' border-bottom: 1px dashed var(--border-color);', '');
+        }
+    }
+
+    return `<div class="custom-tooltip-container" style="display:inline-block; position:relative; margin-left:6px; font-size:0.85rem;" onclick="toggleTooltip(event, this)" onmouseenter="showTooltip(this)" onmouseleave="hideTooltip(this)">
+                <span style="cursor:pointer;">🎯 (${indicatorData.length})</span>
+                <div class="custom-tooltip no-print" style="font-weight:normal; line-height:1.4;">${tooltipContent}</div>
+            </div>`;
+}
+
 function renderCards(data) {
     const root = document.getElementById('cards-root');
     root.innerHTML = '';
@@ -550,17 +663,17 @@ function renderCards(data) {
             const endColor = actEndT === maxDateTime ? 'color: var(--accent); font-weight: 700;' : 'color: #64748b; font-weight: 400;';
             
             const linkedName = getLinkedItemName(act.linkedItem);
-            const linkedHtml = linkedName ? `<div style="grid-column: 1 / -1; font-size: 0.7rem; color: #64748b; background: #f8fafc; padding: 4px 8px; border-radius: 4px; margin-top: 4px; margin-bottom: -4px;">🔗 <b>Vínculo:</b> ${linkedName}</div>` : '';
+            const linkedIcon = linkedName ? `<div class="custom-tooltip-container" style="display:inline-block; position:relative; margin-left:6px; font-size:0.85rem;" onclick="toggleTooltip(event, this)" onmouseenter="showTooltip(this)" onmouseleave="hideTooltip(this)"><span style="cursor:pointer;">🔗</span><div class="custom-tooltip no-print" style="font-weight:normal; line-height:1.4;"><b>Vínculo:</b><br>${linkedName}</div></div>` : '';
+            const indicatorIcon = getIndicatorHtml(act.indicatorData, act.linkedItem);
 
             html += `<div class="action-card-item hover-trigger ${editClass} ${deleteClass}" style="display: grid; grid-template-columns: auto 1fr auto auto; gap: 10px; align-items: center; padding: 12px 4px; border-bottom: ${borderStyle}; border-radius: 4px; position: relative; transition: all 0.3s;">
                 <div style="text-align: center; display: flex; align-items: center; justify-content: center; gap: 8px;">
                     <input type="checkbox" class="delete-checkbox" value="${act.id}" onchange="handleCheckboxChange(this)" ${checkedAttr}>
                     <span class="status-dot ${act.status}" title="${act.status}" onclick="showStatusSelectInTable(${act.id}, '${act.status}', this)" style="cursor:pointer;"></span>
                 </div>
-                <div style="display: flex; flex-direction: column; padding-right: 10px;"><span style="font-size:0.8rem; line-height:1.3; font-weight: 600; color: var(--dark-accent); word-break: break-word;">${act.title}</span></div>
+                <div style="display: flex; flex-direction: column; padding-right: 10px;"><span style="font-size:0.8rem; line-height:1.3; font-weight: 600; color: var(--dark-accent); word-break: break-word;">${act.title}${linkedIcon}${indicatorIcon}</span></div>
                 <span style="font-size:0.75rem; text-align: right; white-space: nowrap; ${startColor}">${s}</span>
                 <span style="font-size:0.75rem; text-align: right; white-space: nowrap; ${endColor}">${e}</span>
-                ${linkedHtml}
                 <div class="no-print hover-target" style="top: 50%; transform: translateY(-50%); right: 4px;">
                     <span style="cursor:pointer; color:#0284c7; font-size: 1rem; line-height: 1;" onclick="editAction(${act.id})" title="Editar">✎</span>
                     <span style="cursor:pointer; color:#ef4444; font-size: 1rem; line-height: 1; margin-left: 8px;" onclick="deleteSingleAction(${act.id})" title="Excluir">✕</span>
@@ -644,7 +757,8 @@ function renderTimeline(data) {
             else if (ev.label === 'Fim') actionTextLabel = 'Fim da Ação';
 
             const linkedName = getLinkedItemName(ev.linkedItem);
-            const linkedHtml = linkedName ? `<div style="margin-bottom: 8px; font-size: 0.7rem; color: #64748b; background: rgba(255,255,255,0.7); padding: 4px 8px; border-radius: 4px; display: inline-block;">🔗 <b>Vínculo:</b> ${linkedName}</div><br>` : '';
+            const linkedIcon = linkedName ? `<div class="custom-tooltip-container" style="display:inline-block; position:relative; margin-left:6px; font-size:0.85rem;" onclick="toggleTooltip(event, this)" onmouseenter="showTooltip(this)" onmouseleave="hideTooltip(this)"><span style="cursor:pointer;">🔗</span><div class="custom-tooltip no-print" style="font-weight:normal; line-height:1.4;"><b>Vínculo:</b><br>${linkedName}</div></div>` : '';
+            const indicatorIcon = getIndicatorHtml(ev.indicatorData, ev.linkedItem);
 
             rightContent = `
                 <div class="timeline-card-wrapper">
@@ -658,18 +772,17 @@ function renderTimeline(data) {
                             <button class="btn-edit-action" style="background: #fee2e2; color: #991b1b;" onclick="deleteSingleAction(${ev.id})">EXCLUIR</button>
                         </div>
                         <div class="card-title" style="margin-bottom: 8px;">
-                            <span style="color: ${catColorsDark[ev.cat] || 'var(--dark-accent)'}; font-size: 1.1rem; font-weight: 800;">${ev.title}</span> 
+                            <span style="color: ${catColorsDark[ev.cat] || 'var(--dark-accent)'}; font-size: 1.1rem; font-weight: 800;">${ev.title}${linkedIcon}${indicatorIcon}</span> 
                             <span class="no-print action-link" style="font-size:0.75rem; color: var(--accent); text-decoration: underline; cursor: pointer;" onclick="toggleCardExpansion(${index}, false)">(Ocultar detalhes)</span>
                         </div>
                         <div style="margin-bottom: 12px;">
                             <span class="cat-badge" style="background: rgba(255,255,255,0.6);">${ev.cat}</span>
                         </div>
-                        ${linkedHtml}
                         <div class="card-content">${ev.desc}</div>
                     </div>
                     <div class="timeline-text-view hover-trigger" id="text-view-${index}" style="display: ${timelineExpandedAll ? 'none' : 'flex'}; align-items: center; gap: 8px; width: 100%; position: relative;">
                         <span class="cat-badge" style="background: ${categories[ev.cat]};">${ev.cat}</span>
-                        <span style="font-weight: 600; color: var(--dark-accent); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 10px;">${actionTextLabel}: ${ev.title} <span class="no-print action-link" style="font-size:0.75rem; color: var(--accent); text-decoration: underline; cursor: pointer;" onclick="toggleCardExpansion(${index}, true)">(Ver detalhes)</span></span>
+                        <span style="font-weight: 600; color: var(--dark-accent); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 10px;">${actionTextLabel}: ${ev.title}${linkedIcon}${indicatorIcon} <span class="no-print action-link" style="font-size:0.75rem; color: var(--accent); text-decoration: underline; cursor: pointer;" onclick="toggleCardExpansion(${index}, true)">(Ver detalhes)</span></span>
                         <div class="status-tag tag-${ev.status}" title="Alterar status" onclick="showStatusSelectInTimeline(${ev.id}, '${ev.status}', this)" style="margin-right: 35px;">
                             ${ev.status}
                             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
@@ -752,11 +865,11 @@ function renderTable(data) {
     uniqueActions.sort((a, b) => {
         let valA, valB;
         switch(currentSortCol) {
-            case 'title': valA = a.title.toLowerCase(); valB = b.title.toLowerCase(); break;
-            case 'cat': valA = a.cat.toLowerCase(); valB = b.cat.toLowerCase(); break;
+            case 'title': valA = (a.title || '').toLowerCase(); valB = (b.title || '').toLowerCase(); break;
+            case 'cat': valA = (a.cat || '').toLowerCase(); valB = (b.cat || '').toLowerCase(); break;
             case 'start': valA = new Date(a.startDate).getTime(); valB = new Date(b.startDate).getTime(); break;
             case 'end': valA = new Date(a.endDate).getTime(); valB = new Date(b.endDate).getTime(); break;
-            case 'status': valA = a.status.toLowerCase(); valB = b.status.toLowerCase(); break;
+            case 'status': valA = (a.status || '').toLowerCase(); valB = (b.status || '').toLowerCase(); break;
             default: valA = new Date(a.startDate).getTime(); valB = new Date(b.startDate).getTime();
         }
         
@@ -776,7 +889,9 @@ function renderTable(data) {
         const endStr = action.endDate.split('-').reverse().join('/');
         
         const linkedName = getLinkedItemName(action.linkedItem);
-        const titleHtml = linkedName ? `<div>${action.title}</div><div style="font-size: 0.65rem; color: #64748b; margin-top: 2px;">🔗 ${linkedName}</div>` : action.title;
+        const linkedIcon = linkedName ? `<div class="custom-tooltip-container" style="display:inline-block; position:relative; margin-left:6px; font-size:0.85rem;" onclick="toggleTooltip(event, this)" onmouseenter="showTooltip(this)" onmouseleave="hideTooltip(this)"><span style="cursor:pointer;">🔗</span><div class="custom-tooltip no-print" style="font-weight:normal; line-height:1.4;"><b>Vínculo:</b><br>${linkedName}</div></div>` : '';
+        const indicatorIcon = getIndicatorHtml(action.indicatorData, action.linkedItem);
+        const titleHtml = `<div>${action.title}${linkedIcon}${indicatorIcon}</div>`;
 
         root.insertAdjacentHTML('beforeend', `
             <tr class="action-row ${action.status} ${tableRowClass} ${tableRowDeleteClass}" id="row-${action.id}">
@@ -869,7 +984,19 @@ window.onclick = function(event) {
   if (!event.target.matches('.dropdown .btn-main')) {
     document.querySelectorAll('.dropdown.show').forEach(d => d.classList.remove('show'));
   }
+  if (!event.target.closest('.custom-tooltip-container')) {
+    document.querySelectorAll('.custom-tooltip-container.pinned').forEach(t => t.classList.remove('pinned'));
+  }
 }
+
+function toggleTooltip(event, el) {
+    event.stopPropagation();
+    const isPinned = el.classList.contains('pinned');
+    document.querySelectorAll('.custom-tooltip-container.pinned').forEach(t => t.classList.remove('pinned'));
+    if (!isPinned) el.classList.add('pinned');
+}
+function showTooltip(el) { el.classList.add('hovered'); }
+function hideTooltip(el) { el.classList.remove('hovered'); }
 
 function importJSON(fileInput) {
     if (!fileInput.files.length) return;

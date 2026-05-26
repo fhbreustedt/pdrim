@@ -560,6 +560,49 @@ footer {
 .status-select-inline { font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(0,0,0,0.2); outline: none; background: #fff; cursor: pointer; font-weight: 700; color: #475569; text-transform: uppercase; width: auto !important; }
 .timeline-card .status-select-inline { position: absolute; right: 15px; top: 15px; width: auto; z-index: 50; }
 
+/* Tooltip Customizado para Vínculos em Racionalizar */
+.custom-tooltip-container {
+    position: relative;
+    display: inline-block;
+    cursor: pointer;
+}
+.custom-tooltip {
+    visibility: hidden;
+    opacity: 0;
+    position: absolute;
+    bottom: 135%;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: var(--dark-accent);
+    color: #fff;
+    text-align: left;
+    padding: 8px 12px;
+    border-radius: 6px;
+    z-index: 9999;
+    font-size: 0.75rem;
+    white-space: normal;
+    min-width: 200px;
+    max-width: 300px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    transition: opacity 0.2s, visibility 0.2s;
+    pointer-events: none;
+}
+.custom-tooltip::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -6px;
+    border-width: 6px;
+    border-style: solid;
+    border-color: var(--dark-accent) transparent transparent transparent;
+}
+.custom-tooltip-container.pinned .custom-tooltip,
+.custom-tooltip-container.hovered .custom-tooltip {
+    visibility: visible;
+    opacity: 1;
+}
+
 /* =========================================
    8. IMPRESSÃO E GERAÇÃO NATIVA DE PDF
    ========================================= */

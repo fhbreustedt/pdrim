@@ -228,6 +228,8 @@ function toggleStkDetails() {
     }
 }
 
+let currentTimeView = 'cards';
+let currentSwotView = 'matrix';
 let currentS3View = 'type';
 function switchS3View(view) {
     currentS3View = view;

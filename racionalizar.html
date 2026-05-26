@@ -79,6 +79,13 @@
                     <input type="date" id="end" required>
                 </div>
             </div>
+
+            <div id="indicator-fields" style="display: none; flex-direction: column; gap: 15px; margin-bottom: 15px; padding: 15px; background: #faf5ff; border: 1px dashed #d8b4fe; border-radius: 6px;">
+                <div style="font-size: 0.75rem; font-weight: bold; color: var(--dark-accent); text-transform: uppercase;">Detalhamento do(s) Indicador(es)</div>
+                <div id="indicator-list" style="display: flex; flex-direction: column; gap: 15px;"></div>
+                <button type="button" class="btn-main btn-secondary" style="padding: 4px 10px; font-size: 0.7rem; align-self: flex-start;" onclick="addIndicatorField()">+ Adicionar Indicador</button>
+            </div>
+
             <label>Descrição Detalhada</label>
             <div id="editor-wrapper">
                 <div id="editor-container"></div>
