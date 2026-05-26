@@ -386,6 +386,83 @@ footer {
     border-bottom: 1px solid var(--accent);
 }
 
+/* Hierarquia de Z-Index para visualização do POP Flutuante sobrepondo tudo */
+.pop-group-container { position: relative; z-index: 1; }
+.pop-group-container:hover { z-index: 10; }
+
+.pop-act-container { position: relative; z-index: 1; }
+.pop-act-container:hover { z-index: 20; }
+
+/* Botões de checklist para os POPs (Descobrir) */
+.pop-step-row {
+    position: relative;
+    z-index: 1;
+    transition: background-color 0.3s, border-color 0.3s;
+}
+.pop-step-row:hover {
+    z-index: 30;
+}
+
+/* Esmaece itens já clicados para dar destaque nos faltantes */
+.pop-step-row.status-sim,
+.pop-step-row.status-nao,
+.pop-step-row.status-na {
+    opacity: 0.5;
+    filter: grayscale(0.5);
+}
+.pop-step-row.status-sim:hover,
+.pop-step-row.status-nao:hover,
+.pop-step-row.status-na:hover {
+    opacity: 1;
+    filter: grayscale(0);
+}
+
+.pop-step-row.status-sim { background-color: #f0fdf4 !important; border-color: #bbf7d0 !important; }
+.pop-step-row.status-nao { background-color: #fef2f2 !important; border-color: #fecaca !important; }
+.pop-step-row.status-na { background-color: #f8fafc !important; border-color: #e2e8f0 !important; }
+
+.pop-step-row.dragging { opacity: 0.5; }
+.pop-step-row.drag-over { border-top: 2px dashed var(--accent) !important; padding-top: 7px !important; }
+.pop-drag-handle { cursor: grab; color: #94a3b8; font-size: 1.2rem; margin-right: 8px; user-select: none; transition: color 0.2s; }
+.pop-drag-handle:hover { color: var(--dark-accent); }
+.pop-drag-handle:active { cursor: grabbing; }
+
+.media-hover-trigger { position: relative; display: inline-flex; align-items: center; cursor: pointer; color: var(--accent); }
+.media-preview-box {
+    display: none; position: absolute; bottom: 120%; left: 50%; transform: translateX(-50%);
+    background: #fff; border: 1px solid #cbd5e1; box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    padding: 5px; z-index: 1000; border-radius: 8px;
+    width: 320px;
+}
+.media-hover-trigger:hover .media-preview-box { display: block; }
+.media-preview-box::after {
+    content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+    border-width: 8px; border-style: solid; border-color: #cbd5e1 transparent transparent transparent;
+}
+.media-preview-box iframe { width: 100%; height: 180px; border: none; border-radius: 4px; background: #000; }
+.media-preview-box video { width: 100%; max-height: 200px; border-radius: 4px; background: #000; }
+.media-preview-box img { max-width: 100%; max-height: 200px; object-fit: contain; border-radius: 4px; }
+
+/* Drag & Drop das Atividades para os Grupos de Etapas */
+.dragging-act { opacity: 0.5; transform: scale(0.98); }
+.drag-over-group { border: 2px dashed var(--accent) !important; background-color: #f0f7ff !important; }
+
+.pop-status-btn {
+    font-size: 0.65rem;
+    padding: 3px 8px;
+    border-radius: 12px;
+    border: 1px solid #cbd5e1;
+    background: #fff;
+    color: #64748b;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+.pop-status-btn:hover { background: #f1f5f9; }
+.pop-status-btn.active-sim { background: #22c55e; color: #fff; border-color: #22c55e; }
+.pop-status-btn.active-nao { background: #ef4444; color: #fff; border-color: #ef4444; }
+.pop-status-btn.active-na { background: #64748b; color: #fff; border-color: #64748b; }
+
 #bpmn-container.view-mode .djs-palette { display: none !important; }
 #bpmn-container.view-mode .djs-context-pad { display: none !important; }
 
@@ -467,6 +544,10 @@ footer {
 .pdf-mode .timeline-text-view { display: none !important; }
 .pdf-mode .timeline-card .card-content { display: block !important; }
 .pdf-mode .timeline-card .btn-more, .pdf-mode .timeline-card .card-actions, .pdf-mode .delete-checkbox { display: none !important; }
+
+/* PDF MODE (POPs Módulo Descobrir) */
+.pdf-mode .interactive-pop { display: none !important; }
+.pdf-mode #pop-print-container { display: block !important; }
 
 /* =========================================
    10. CLASSES UTILITÁRIAS E ALINHAMENTOS

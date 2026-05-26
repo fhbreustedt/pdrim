@@ -8,6 +8,7 @@ let dbDesc = {
 };
 let selectedActivityId = null;
 let selectedRiskId = null;
+let expandedPopActivities = {};
 
 document.addEventListener('DOMContentLoaded', () => {
     initDescobrirUI();
@@ -46,6 +47,8 @@ async function initDescobrirUI() {
                                 delete a.riskIds;
                             }
                             if (!a.riskAssocs) a.riskAssocs = [];
+                            if (!a.steps) { a.steps = []; }
+                            else { a.steps.forEach(s => s.status = s.status || null); }
                         });
                     }
                     parsed.models[k].risks.forEach(r => {
@@ -125,6 +128,7 @@ function switchImgView(view) {
 
     selectedActivityId = null;
     selectedRiskId = null;
+    expandedPopActivities = {};
     renderAll();
 }
 
@@ -244,6 +248,7 @@ function zerarArtefato() {
         };
         selectedActivityId = null;
         selectedRiskId = null;
+        expandedPopActivities = {};
         saveDesc();
         switchImgView('as-is');
         showToast("Artefato zerado com sucesso!", "success");
@@ -251,6 +256,7 @@ function zerarArtefato() {
 }
 
 function printPage() {
+    renderPrintPOPs();
     const a = document.querySelector('.container'); 
     if(a) a.classList.add('pdf-mode'); 
 
@@ -296,14 +302,22 @@ function showToast(message, type = 'error') {
 }
 
 function selectActivity(id) {
-    selectedActivityId = id;
-    if (id !== null) selectedRiskId = null;
+    if (selectedActivityId === id) {
+        selectedActivityId = null;
+    } else {
+        selectedActivityId = id;
+        if (id !== null) selectedRiskId = null;
+    }
     renderAll();
 }
 
 function selectRisk(id) {
-    selectedRiskId = id;
-    if (id !== null) selectedActivityId = null;
+    if (selectedRiskId === id) {
+        selectedRiskId = null;
+    } else {
+        selectedRiskId = id;
+        if (id !== null) selectedActivityId = null;
+    }
     renderAll();
 }
 
@@ -312,6 +326,7 @@ function renderAll() {
     renderRiskList();
     renderMatrix();
     renderHeatmap();
+    renderPop();
 }
 
 function addActivity() {
@@ -322,7 +337,8 @@ function addActivity() {
         id: 'act_' + Date.now(),
         name: inp.value.trim(),
         riskAssocs: [],
-        noRisk: false
+        noRisk: false,
+        steps: []
     };
     
     dbDesc.models[dbDesc.activeView].activities.push(newAct);
@@ -346,7 +362,9 @@ function renderActivityList() {
     const list = document.getElementById('activity-list');
     const title = document.getElementById('activity-panel-title');
     const btnBack = document.getElementById('btn-back-to-activities');
+    const btnLinkAllActs = document.getElementById('btn-link-all-acts');
     const addWrapper = document.getElementById('activity-add-wrapper');
+    const linkWrapper = document.getElementById('activity-link-wrapper');
     const acts = dbDesc.models[dbDesc.activeView].activities;
     const allRisks = dbDesc.models[dbDesc.activeView].risks;
     let html = '';
@@ -354,7 +372,19 @@ function renderActivityList() {
     if (selectedRiskId) {
         title.innerText = 'Atividades do Risco Selecionado';
         btnBack.style.display = 'inline-block';
+        if (btnLinkAllActs) btnLinkAllActs.style.display = 'inline-block';
         addWrapper.style.display = 'none';
+        
+        const availableActs = acts.filter(a => !a.noRisk && !a.riskAssocs.find(ra => ra.riskId === selectedRiskId));
+        if (availableActs.length > 0) {
+            linkWrapper.style.display = 'flex';
+            const sel = document.getElementById('existing-act-sel');
+            let selHtml = '<option value="">-- Vincular a Atividade --</option>';
+            availableActs.forEach(a => selHtml += `<option value="${a.id}">${a.name}</option>`);
+            sel.innerHTML = selHtml;
+        } else {
+            linkWrapper.style.display = 'none';
+        }
         
         const filteredActs = acts.filter(a => !a.noRisk && a.riskAssocs && a.riskAssocs.find(ra => ra.riskId === selectedRiskId));
         
@@ -368,12 +398,17 @@ function renderActivityList() {
             const col = '#475569';
             
             let riskIcon = '';
-            if (a.riskAssocs && a.riskAssocs.length > 0) {
+            const riskCount = a.riskAssocs ? a.riskAssocs.length : 0;
+            if (riskCount > 0) {
                 const riskNames = a.riskAssocs.map(ra => {
                     const r = allRisks.find(x => x.id === ra.riskId);
                     return r ? r.desc : '';
                 }).filter(Boolean).join('\n- ');
-                riskIcon = `<span title="Riscos Associados:\n- ${riskNames}" style="font-size:0.8rem; margin-right:6px; cursor:help;">⚠️</span>`;
+                riskIcon = `<span title="Riscos Associados:\n- ${riskNames}" style="font-size:0.8rem; margin-right:6px; cursor:help; font-weight:bold; color:var(--dark-accent);">⚠️ (${riskCount})</span>`;
+            } else if (a.noRisk) {
+                riskIcon = `<span title="Atividade marcada como sem riscos" style="font-size:0.8rem; margin-right:6px; cursor:help; font-weight:bold; color:var(--dark-accent);">✅ (0)</span>`;
+            } else {
+                riskIcon = `<span title="Nenhum risco associado" style="font-size:0.8rem; margin-right:6px; cursor:help; font-weight:bold; color:var(--dark-accent);">(0)</span>`;
             }
             
             html += `<div class="mini-card hover-trigger" style="background:${bg}; color:${col}; cursor:pointer; align-items:center;" onclick="selectActivity('${a.id}')">
@@ -389,7 +424,9 @@ function renderActivityList() {
     } else {
         title.innerText = 'Atividades do Modelo';
         btnBack.style.display = 'none';
+        if (btnLinkAllActs) btnLinkAllActs.style.display = 'none';
         addWrapper.style.display = 'flex';
+        linkWrapper.style.display = 'none';
         
         if (acts.length === 0) {
             list.innerHTML = '<span class="empty-msg">Nenhuma atividade cadastrada nesta aba.</span>';
@@ -402,14 +439,17 @@ function renderActivityList() {
             const col = isSel ? '#fff' : '#475569';
             
             let riskIcon = '';
-            if (a.riskAssocs && a.riskAssocs.length > 0) {
+            const riskCount = a.riskAssocs ? a.riskAssocs.length : 0;
+            if (riskCount > 0) {
                 const riskNames = a.riskAssocs.map(ra => {
                     const r = allRisks.find(x => x.id === ra.riskId);
                     return r ? r.desc : '';
                 }).filter(Boolean).join('\n- ');
-                riskIcon = `<span title="Riscos Associados:\n- ${riskNames}" style="font-size:0.8rem; margin-right:6px; cursor:help;">⚠️</span>`;
+                riskIcon = `<span title="Riscos Associados:\n- ${riskNames}" style="font-size:0.8rem; margin-right:6px; cursor:help; font-weight:bold; color:var(--dark-accent);">⚠️ (${riskCount})</span>`;
             } else if (a.noRisk) {
-                riskIcon = `<span title="Atividade marcada como sem riscos" style="font-size:0.8rem; margin-right:6px; cursor:help;">✅</span>`;
+                riskIcon = `<span title="Atividade marcada como sem riscos" style="font-size:0.8rem; margin-right:6px; cursor:help; font-weight:bold; color:var(--dark-accent);">✅ (0)</span>`;
+            } else {
+                riskIcon = `<span title="Nenhum risco associado" style="font-size:0.8rem; margin-right:6px; cursor:help; font-weight:bold; color:var(--dark-accent);">(0)</span>`;
             }
             
             html += `<div class="mini-card hover-trigger" style="background:${bg}; color:${col}; cursor:pointer; align-items:center;" onclick="selectActivity('${a.id}')">
@@ -418,7 +458,6 @@ function renderActivityList() {
                     <b style="font-size:0.75rem; display:block; word-break:break-word; flex:1;">${a.name}</b>
                 </div>
                 <div class="no-print hover-target" style="top:50%; transform:translateY(-50%); right:4px; align-items:center;">
-                    <span style="cursor:pointer; color:#0284c7; font-size:1.1rem; line-height:1; margin-right:4px;" onclick="event.stopPropagation(); selectActivity('${a.id}')" title="Vincular Risco">🔗</span>
                     <span style="cursor:pointer; color:#ef4444; font-size:1.1rem; line-height:1;" onclick="event.stopPropagation(); removeActivity('${a.id}')" title="Excluir">✕</span>
                 </div>
             </div>`;
@@ -454,6 +493,7 @@ function renderRiskList() {
     const actContainer = document.getElementById('risk-activity-container');
     const title = document.getElementById('risk-panel-title');
     const btnBack = document.getElementById('btn-back-to-bank');
+    const btnLinkAllRisks = document.getElementById('btn-link-all-risks');
     const list = document.getElementById('risk-list');
     const addWrapper = document.getElementById('risk-add-wrapper');
     const chkNoRisk = document.getElementById('chk-no-risk');
@@ -466,6 +506,7 @@ function renderRiskList() {
         bankContainer.style.display = 'block';
         title.innerText = 'Riscos do Processo';
         btnBack.style.display = 'none';
+        if (btnLinkAllRisks) btnLinkAllRisks.style.display = 'none';
         
         const gList = document.getElementById('global-risk-list');
         let html = '';
@@ -483,32 +524,20 @@ function renderRiskList() {
                 let actIcon = '';
                 if (linkedActs.length > 0) {
                     const actNames = linkedActs.map(a => a.name).join('\n- ');
-                    actIcon = `<span title="Atividades Vinculadas:\n- ${actNames}" style="font-size:0.8rem; margin-right:6px; cursor:help;">🔗</span>`;
+                    actIcon = `<span title="Atividades Vinculadas:\n- ${actNames}" style="font-size:0.8rem; margin-right:6px; cursor:help; font-weight:bold; color:var(--dark-accent);">📋 (${linkedActs.length})</span>`;
+                } else {
+                    actIcon = `<span title="Nenhuma atividade vinculada" style="font-size:0.8rem; margin-right:6px; cursor:help; font-weight:bold; color:var(--dark-accent);">(0)</span>`;
                 }
-                
-                let actOpts = '<option value="">-- Vincular a Atividade --</option>';
-                availableActs.forEach(a => actOpts += `<option value="${a.id}">${a.name}</option>`);
-                
-                let linkedHtml = linkedActs.map(a => `<span class="cat-badge" style="background:#f1f5f9; color:#475569; margin-top:4px; display:inline-flex; align-items:center; gap:4px; padding: 2px 6px;">${a.name} <b class="no-print" style="cursor:pointer; color:#ef4444; font-size: 0.8rem; line-height:1;" onclick="removeRisk('${a.id}', '${r.id}')" title="Desvincular">✕</b></span>`).join(' ');
                 
                 html += `<div class="mini-card hover-trigger" style="display:flex; flex-direction:column; gap:8px; background:${bg}; color:${col};">
                     <div style="display:flex; justify-content:space-between; align-items:center; min-height:24px; cursor:pointer;" onclick="selectRisk('${r.id}')">
                         <div style="flex:1; display:flex; align-items:center;">
                             ${actIcon}
-                            <span style="font-size:0.75rem; font-weight:600; line-height:1.2; flex:1; word-break:break-word;">⚠️ ${r.desc}</span>
+                            <span style="font-size:0.75rem; font-weight:600; line-height:1.2; flex:1; word-break:break-word;">${r.desc}</span>
                         </div>
                         <div class="no-print hover-target" style="top:4px; right:4px; align-items:center;">
-                            <span style="cursor:pointer; color:#0284c7; font-size:1.1rem; line-height:1; margin-right:4px;" onclick="event.stopPropagation(); document.getElementById('link-box-${r.id}').style.display='block'" title="Vincular Atividade">🔗</span>
                             <span style="cursor:pointer; color:#ef4444; font-size:1.1rem; line-height:1;" onclick="event.stopPropagation(); removeGlobalRisk('${r.id}')" title="Excluir">✕</span>
                         </div>
-                    </div>
-                    
-                    <div class="no-print" id="link-box-${r.id}" style="display:none; margin-top:4px; border-top:1px dashed #e2e8f0; padding-top:8px;">
-                        <div style="display:flex; gap:6px; align-items:center;" onclick="event.stopPropagation();">
-                            <select id="sel-act-${r.id}" class="status-select-inline" style="flex:1; font-size:0.7rem; padding:4px;">${actOpts}</select>
-                            <button class="btn-main btn-secondary" style="padding:4px 8px; font-size:0.7rem;" onclick="linkActToRisk('${r.id}')">Vincular</button>
-                        </div>
-                        ${linkedHtml ? `<div style="display:flex; flex-wrap:wrap; gap:4px; padding-top:8px;" onclick="event.stopPropagation();">${linkedHtml}</div>` : ''}
                     </div>
                 </div>`;
             });
@@ -529,10 +558,12 @@ function renderRiskList() {
     
     if (act.noRisk) {
         addWrapper.style.display = 'none';
+        if (btnLinkAllRisks) btnLinkAllRisks.style.display = 'none';
         list.innerHTML = '<span class="empty-msg" style="background: #f0fdf4; border-color: #bbf7d0; color: #166534;">✅ Atividade marcada como sem riscos.</span>';
         return;
     }
     
+    if (btnLinkAllRisks) btnLinkAllRisks.style.display = 'inline-block';
     addWrapper.style.display = 'flex';
     let html = '';
     
@@ -555,7 +586,7 @@ function renderRiskList() {
         const r = allRisks.find(x => x.id === ra.riskId);
         if (r) {
             html += `<div class="mini-card hover-trigger" style="display:flex; justify-content:space-between; align-items:center; min-height: 24px;">
-                <span style="font-size:0.75rem; font-weight:600; line-height: 1.2; max-width: 80%;">⚠️ ${r.desc}</span>
+                <span style="font-size:0.75rem; font-weight:600; line-height: 1.2; max-width: 80%;">${r.desc}</span>
                 <div class="no-print hover-target" style="top:50%; transform:translateY(-50%); right:4px; align-items:center;">
                     <span style="cursor:pointer; color:#ef4444; font-size:1.1rem; line-height:1;" onclick="removeRisk('${act.id}', '${r.id}')" title="Desvincular">✕</span>
                 </div>
@@ -632,6 +663,46 @@ function addRisk() {
     renderAll();
 }
 
+function linkRiskToAllActs() {
+    if (!selectedRiskId) return;
+    const acts = dbDesc.models[dbDesc.activeView].activities;
+    let count = 0;
+    acts.forEach(a => {
+        if (!a.noRisk && !a.riskAssocs.find(ra => ra.riskId === selectedRiskId)) {
+            a.riskAssocs.push({ riskId: selectedRiskId, prob: 1, imp: 1 });
+            count++;
+        }
+    });
+    if (count > 0) {
+        saveDesc();
+        renderAll();
+        showToast(`Risco vinculado a ${count} atividade(s).`, "success");
+    } else {
+        showToast("Este risco já está vinculado a todas as atividades aplicáveis.", "info");
+    }
+}
+
+function linkActToAllRisks() {
+    if (!selectedActivityId) return;
+    const act = dbDesc.models[dbDesc.activeView].activities.find(a => a.id === selectedActivityId);
+    if (!act || act.noRisk) return;
+    const allRisks = dbDesc.models[dbDesc.activeView].risks;
+    let count = 0;
+    allRisks.forEach(r => {
+        if (!act.riskAssocs.find(ra => ra.riskId === r.id)) {
+            act.riskAssocs.push({ riskId: r.id, prob: 1, imp: 1 });
+            count++;
+        }
+    });
+    if (count > 0) {
+        saveDesc();
+        renderAll();
+        showToast(`Atividade vinculada a ${count} risco(s).`, "success");
+    } else {
+        showToast("Esta atividade já possui todos os riscos vinculados.", "info");
+    }
+}
+
 function associateRisk() {
     const sel = document.getElementById('existing-risk-sel');
     const rId = sel.value;
@@ -649,17 +720,18 @@ function associateRisk() {
     renderAll();
 }
 
-function linkActToRisk(rId) {
-    const sel = document.getElementById(`sel-act-${rId}`);
+function associateActivity() {
+    const sel = document.getElementById('existing-act-sel');
     const actId = sel.value;
-    if (!actId) return;
+    if (!actId || !selectedRiskId) return;
     
     const act = dbDesc.models[dbDesc.activeView].activities.find(a => a.id === actId);
-    if (act && !act.riskAssocs.find(ra => ra.riskId === rId)) {
-        act.riskAssocs.push({ riskId: rId, prob: 1, imp: 1 });
+    if (act && !act.riskAssocs.find(ra => ra.riskId === selectedRiskId)) {
+        act.riskAssocs.push({ riskId: selectedRiskId, prob: 1, imp: 1 });
         saveDesc();
         renderAll();
     }
+    sel.value = '';
 }
 
 function removeRisk(actId, rId) {
@@ -766,6 +838,304 @@ function renderHeatmap() {
         ${makeCell(2, 1, '#4ade80')} ${makeCell(2, 2, '#facc15')} ${makeCell(2, 3, '#ef4444')}
         ${makeCell(1, 1, '#22c55e')} ${makeCell(1, 2, '#4ade80')} ${makeCell(1, 3, '#facc15')}
     `;
+}
+
+// --- LÓGICA DOS POPs (PROCEDIMENTOS OPERACIONAIS) --- //
+
+let isPopEditMode = false;
+let dragActIdPop = null;
+let dragStepIdxPop = null;
+let dragActIdPopGroup = null;
+
+function onDragStartPopAct(e, actId) {
+    if (!isPopEditMode) return;
+    dragActIdPopGroup = actId;
+    e.dataTransfer.effectAllowed = 'move';
+    e.stopPropagation();
+    setTimeout(() => e.target.classList.add('dragging-act'), 0);
+}
+
+function onDragOverPopGroup(e) {
+    if (!isPopEditMode || !dragActIdPopGroup) return;
+    e.preventDefault();
+}
+
+function onDropPopGroup(e, groupName) {
+    if (!isPopEditMode || !dragActIdPopGroup) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const container = e.target.closest('.pop-group-container');
+    if (container) container.classList.remove('drag-over-group');
+    const act = dbDesc.models[dbDesc.activeView].activities.find(a => a.id === dragActIdPopGroup);
+    const origGroup = act.etapa || 'Etapas Não Classificadas';
+    if (act && origGroup !== groupName) {
+        act.etapa = groupName === 'Etapas Não Classificadas' ? '' : groupName;
+        saveDesc();
+        renderPop();
+    }
+    dragActIdPopGroup = null;
+}
+
+function togglePopEditMode() {
+    isPopEditMode = !isPopEditMode;
+    document.getElementById('btn-edit-pop').innerText = isPopEditMode ? 'Concluir Edição' : 'Editar POP';
+    document.getElementById('btn-edit-pop').style.backgroundColor = isPopEditMode ? 'var(--dark-accent)' : '';
+    document.getElementById('btn-edit-pop').style.color = isPopEditMode ? '#fff' : '';
+    renderPop();
+}
+
+function togglePopActivity(id) {
+    expandedPopActivities[id] = !expandedPopActivities[id];
+    renderPop();
+}
+
+function addPopStep(actId) {
+    const inp = document.getElementById('new-pop-step-' + actId);
+    const desc = inp ? inp.value.trim() : '';
+    if (!desc) return;
+    
+    const act = dbDesc.models[dbDesc.activeView].activities.find(a => a.id === actId);
+    if (!act) return;
+    
+    if (!act.steps) act.steps = [];
+    
+    act.steps.push({ id: 'step_' + Date.now(), desc: desc, status: null });
+    inp.value = '';
+    saveDesc();
+    renderPop();
+}
+
+function removePopStep(actId, stepId) {
+    const act = dbDesc.models[dbDesc.activeView].activities.find(a => a.id === actId);
+    if (!act || !act.steps) return;
+    
+    act.steps = act.steps.filter(s => s.id !== stepId);
+    saveDesc();
+    renderPop();
+}
+
+function onDragStartPop(e, actId, idx) {
+    dragActIdPop = actId;
+    dragStepIdxPop = idx;
+    e.dataTransfer.effectAllowed = 'move';
+    setTimeout(() => e.target.classList.add('dragging'), 0);
+}
+
+function onDragOverPop(e) {
+    e.preventDefault();
+}
+
+function onDropPop(e, actId, dropIdx) {
+    e.preventDefault();
+    const row = e.target.closest('.pop-step-row');
+    if (row) row.classList.remove('drag-over');
+    
+    if (dragActIdPop === actId && dragStepIdxPop !== null && dragStepIdxPop !== dropIdx) {
+        const act = dbDesc.models[dbDesc.activeView].activities.find(a => a.id === actId);
+        const step = act.steps.splice(dragStepIdxPop, 1)[0];
+        act.steps.splice(dropIdx, 0, step);
+        saveDesc();
+        renderPop();
+    }
+}
+
+function updateActEtapa(actId, val) {
+    const act = dbDesc.models[dbDesc.activeView].activities.find(a => a.id === actId);
+    if (act) {
+        act.etapa = val.trim();
+        saveDesc();
+        renderPop();
+    }
+}
+
+function attachPopMedia(actId, stepId) {
+    const act = dbDesc.models[dbDesc.activeView].activities.find(a => a.id === actId);
+    const step = act.steps.find(s => s.id === stepId);
+    const url = prompt("Insira a URL da imagem ou vídeo (YouTube / MP4):", step.media || '');
+    if (url !== null) {
+        step.media = url.trim();
+        saveDesc();
+        renderPop();
+    }
+}
+
+function getPopMediaHtml(url) {
+    if (!url) return '';
+    if (url.includes('youtube.com/watch') || url.includes('youtu.be/')) {
+        let vid = url.split('v=')[1] || url.split('youtu.be/')[1];
+        if(vid) vid = vid.split('&')[0];
+        return `<iframe src="https://www.youtube.com/embed/${vid}" allowfullscreen></iframe>`;
+    } else if (url.match(/\.(mp4|webm|ogg)$/i)) {
+        return `<video src="${url}" autoplay loop muted></video>`;
+    } else {
+        return `<img src="${url}" alt="Mídia" style="max-width: 100%; max-height: 250px; object-fit: contain; border-radius: 4px;"/>`;
+    }
+}
+
+function setPopStepStatus(actId, stepId, status) {
+    saveDesc();
+    renderPop();
+}
+
+function setPopStepStatus(actId, stepId, status) {
+    const act = dbDesc.models[dbDesc.activeView].activities.find(a => a.id === actId);
+    if (!act || !act.steps) return;
+    const step = act.steps.find(s => s.id === stepId);
+    if (step) {
+        step.status = step.status === status ? null : status;
+        saveDesc();
+        renderPop();
+    }
+}
+
+function renderPop() {
+    const container = document.getElementById('pop-tree-container');
+    const acts = dbDesc.models[dbDesc.activeView].activities;
+    
+    if (acts.length === 0) {
+        container.innerHTML = '<div class="empty-state" style="padding: 20px;">Nenhuma atividade cadastrada no modelo.</div>';
+        return;
+    }
+    
+    const groups = {};
+    acts.forEach(a => {
+        const g = a.etapa || 'Etapas Não Classificadas';
+        if (!groups[g]) groups[g] = [];
+        groups[g].push(a);
+    });
+    
+    let html = '<div style="display: flex; flex-direction: column; gap: 15px;">';
+    
+    Object.keys(groups).forEach(groupName => {
+        html += `<div class="pop-group-container" style="background: #fdfdfd; border: 1px solid var(--border-color); border-radius: 8px; padding: 15px; transition: background-color 0.2s, border-color 0.2s;"
+            ${isPopEditMode ? `ondragover="onDragOverPopGroup(event)" ondragenter="this.classList.add('drag-over-group')" ondragleave="this.classList.remove('drag-over-group')" ondrop="onDropPopGroup(event, '${groupName}')"` : ''}>
+            <h4 style="font-size: 0.95rem; color: var(--dark-accent); margin-top: 0; margin-bottom: 12px; padding-bottom: 5px; border-bottom: 2px solid var(--primary-soft); display: flex; align-items: center; gap: 8px;">
+                📌 ${groupName}
+            </h4>
+            <div style="display: flex; flex-direction: column; gap: 8px;">`;
+            
+        groups[groupName].forEach(a => {
+            const isExpanded = !!expandedPopActivities[a.id];
+            const stepCount = (a.steps && a.steps.length > 0) ? a.steps.length : 0;
+            
+            html += `<div class="pop-act-container" style="border: 1px solid var(--border-color); border-radius: 6px; background: #fff; transition: opacity 0.2s, transform 0.2s;"
+                ${isPopEditMode ? `draggable="true" ondragstart="onDragStartPopAct(event, '${a.id}')" ondragend="this.classList.remove('dragging-act')"` : ''}>
+                <div style="padding: 10px 15px; background: #f8fafc; cursor: pointer; display: flex; justify-content: space-between; align-items: center; border-radius: ${isExpanded ? '5px 5px 0 0' : '5px'};" onclick="togglePopActivity('${a.id}')">
+                    <div style="display: flex; align-items: center; gap: 10px; ${isPopEditMode ? 'cursor: grab;' : ''}">
+                        <span style="font-weight: 700; color: var(--dark-accent); font-size: 0.8rem;">${isExpanded ? '▼' : '▶'}</span>
+                        <span style="font-weight: 600; color: #334155; font-size: 0.85rem;">${a.name}</span>
+                    </div>
+                    <span style="font-size: 0.65rem; background: #e2e8f0; color: #475569; padding: 2px 8px; border-radius: 12px; font-weight: 700;">${stepCount} passos</span>
+                </div>`;
+                
+            if (isExpanded) {
+                html += `<div style="padding: 15px; border-top: 1px solid var(--border-color); background: #fff;">`;
+                
+                if (isPopEditMode) {
+                    html += `<div class="input-row" style="margin-bottom: 15px;">
+                        <input type="text" placeholder="Atribuir a um Grupo de Etapa (Ex: Preparação)" value="${a.etapa || ''}" onchange="updateActEtapa('${a.id}', this.value)" style="padding: 6px; border: 1px dashed var(--accent); border-radius: 4px; font-size: 0.75rem; width: 100%; background: #f0f7ff;">
+                    </div>`;
+                }
+                
+                if (a.steps && a.steps.length > 0) {
+                    html += `<div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px;">`;
+                    a.steps.forEach((step, idx) => {
+                        const st = step.status || null;
+                        const btnSim = `pop-status-btn ${st === 'sim' ? 'active-sim' : ''}`;
+                        const btnNao = `pop-status-btn ${st === 'nao' ? 'active-nao' : ''}`;
+                        const btnNa = `pop-status-btn ${st === 'na' ? 'active-na' : ''}`;
+
+                        const mediaHtml = step.media ? `
+                            <div class="media-hover-trigger no-print" style="margin-left: 6px; font-size: 1rem;" title="Ver Anexo (Clique para abrir na guia)" onclick="window.open('${step.media}', '_blank')">
+                                🖼️
+                                <div class="media-preview-box" onclick="event.stopPropagation()">${getPopMediaHtml(step.media)}</div>
+                            </div>` : '';
+
+                        let dragAttrs = isPopEditMode ? `draggable="true" ondragstart="onDragStartPop(event, '${a.id}', ${idx})" ondragend="this.classList.remove('dragging')" ondragover="onDragOverPop(event)" ondragenter="this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="onDropPop(event, '${a.id}', ${idx})"` : '';
+
+                        html += `<div class="pop-step-row status-${st || ''}" style="display: flex; align-items: flex-start; gap: 10px; padding: 8px; background: #f8fafc; border-radius: 4px; border: 1px solid #e2e8f0; transition: all 0.2s;" ${dragAttrs}>
+                            ${isPopEditMode ? `<div class="pop-drag-handle" title="Segure para arrastar">☰</div>` : ''}
+                            <div style="font-weight: bold; color: var(--accent); min-width: 20px;">${idx + 1}.</div>
+                            <div style="flex: 1; font-size: 0.8rem; color: #334155; padding-top: 2px;">
+                                ${step.desc}
+                                ${mediaHtml}
+                            </div>
+                            <div style="display: flex; gap: 4px; align-items: center;">
+                                <button class="${btnSim}" onclick="setPopStepStatus('${a.id}', '${step.id}', 'sim')">Sim</button>
+                                <button class="${btnNao}" onclick="setPopStepStatus('${a.id}', '${step.id}', 'nao')">Não</button>
+                                <button class="${btnNa}" onclick="setPopStepStatus('${a.id}', '${step.id}', 'na')">N/A</button>
+                            </div>
+                            ${isPopEditMode ? `
+                            <div style="display: flex; gap: 8px; margin-left: 10px; align-items: center;">
+                                <span style="cursor:pointer; color:#0284c7; font-size:1.1rem; line-height:1;" onclick="attachPopMedia('${a.id}', '${step.id}')" title="${step.media ? 'Alterar Anexo' : 'Anexar Mídia'}">🔗</span>
+                                <span style="cursor:pointer; color:#ef4444; font-size:1.1rem; line-height:1;" onclick="removePopStep('${a.id}', '${step.id}')" title="Excluir">✕</span>
+                            </div>
+                            ` : ''}
+                        </div>
+                        `;
+                    });
+                    html += `</div>`;
+                } else {
+                    html += `<div class="empty-msg" style="margin-bottom: 15px;">Nenhum passo cadastrado.</div>`;
+                }
+                
+                if (isPopEditMode) {
+                    html += `<div class="input-row mb-0" style="align-items: center;">
+                        <input type="text" id="new-pop-step-${a.id}" placeholder="Descreva um novo passo..." class="flex-1" style="padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.8rem;" onkeypress="if(event.key==='Enter') addPopStep('${a.id}')">
+                        <button class="btn-main" style="padding: 6px 12px; font-size: 0.75rem;" onclick="addPopStep('${a.id}')">Adicionar</button>
+                    </div>`;
+                }
+                
+                html += `</div>`;
+            }
+            html += `</div>`;
+        });
+        html += `</div></div>`;
+    });
+    
+    html += '</div>';
+    
+    container.innerHTML = html;
+}
+
+function renderPrintPOPs() {
+    const printContainer = document.getElementById('pop-print-container');
+    const acts = dbDesc.models[dbDesc.activeView].activities;
+    let html = '';
+    
+    const popActs = acts.filter(a => a.steps && a.steps.length > 0);
+    
+    if (popActs.length === 0) {
+        printContainer.innerHTML = '<p style="color: #64748b; font-style: italic;">Nenhum procedimento operacional padrão cadastrado para este modelo.</p>';
+        return;
+    }
+    
+    popActs.forEach(act => {
+        html += `<div style="margin-bottom: 20px; page-break-inside: avoid;">
+            <h4 style="color: var(--dark-accent); margin-bottom: 10px; font-size: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 5px;">${act.name}</h4>
+            <div style="display: flex; flex-direction: column; gap: 8px;">`;
+        
+        act.steps.forEach((step, idx) => {
+            const st = step.status;
+            const simStyle = st === 'sim' ? 'background: #22c55e; color: white; border-color: #22c55e;' : 'color: #94a3b8; border-color: #cbd5e1;';
+            const naoStyle = st === 'nao' ? 'background: #ef4444; color: white; border-color: #ef4444;' : 'color: #94a3b8; border-color: #cbd5e1;';
+            const naStyle = st === 'na' ? 'background: #64748b; color: white; border-color: #64748b;' : 'color: #94a3b8; border-color: #cbd5e1;';
+
+            html += `<div style="display: flex; gap: 10px; align-items: flex-start; padding: 6px 0;">
+                <div style="width: 20px; font-weight: bold; color: var(--accent);">${idx + 1}.</div>
+                <div style="flex: 1; font-size: 0.85rem; color: #334155;">${step.desc}</div>
+                <div style="display: flex; gap: 5px;">
+                    <span style="font-size: 0.6rem; padding: 2px 8px; border: 1px solid; border-radius: 10px; ${simStyle}">Sim</span>
+                    <span style="font-size: 0.6rem; padding: 2px 8px; border: 1px solid; border-radius: 10px; ${naoStyle}">Não</span>
+                    <span style="font-size: 0.6rem; padding: 2px 8px; border: 1px solid; border-radius: 10px; ${naStyle}">N/A</span>
+                </div>
+            </div>`;
+        });
+        
+        html += `</div></div>`;
+    });
+    
+    printContainer.innerHTML = html;
 }
 
 function saveDesc() {

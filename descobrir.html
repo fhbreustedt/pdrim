@@ -74,11 +74,18 @@
                 <div class="help-box" style="margin-top: 0; background: #fff; border: 1px solid var(--border-color);">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                         <b class="field-label" id="activity-panel-title" style="margin-bottom: 0;">Atividades do Modelo</b>
-                        <button class="btn-edit-action" id="btn-back-to-activities" style="display: none;" onclick="selectRisk(null)">Ver Todas</button>
+                        <div style="display: flex; gap: 5px;">
+                            <button class="btn-edit-action" id="btn-link-all-acts" style="display: none;" onclick="linkRiskToAllActs()">Vincular a Todas</button>
+                            <button class="btn-edit-action" id="btn-back-to-activities" style="display: none;" onclick="selectRisk(null)">Ver Todas</button>
+                        </div>
                     </div>
                     <div id="activity-add-wrapper" class="input-row no-print" style="margin-bottom: 10px;">
                         <input type="text" id="new-activity-desc" placeholder="Nome da atividade..." class="flex-1" style="padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.8rem;" onkeypress="if(event.key==='Enter') addActivity()">
                         <button class="btn-main" style="padding: 6px 12px; font-size: 0.75rem;" onclick="addActivity()">Add</button>
+                    </div>
+                    <div id="activity-link-wrapper" class="input-row no-print" style="display: none; margin-bottom: 10px;">
+                        <select id="existing-act-sel" class="flex-1" style="padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.8rem;"></select>
+                        <button class="btn-main btn-secondary" style="padding: 6px 12px; font-size: 0.75rem;" onclick="associateActivity()">Vincular</button>
                     </div>
                     <div id="activity-list" class="item-list" style="max-height: 300px; overflow-y: auto; padding-right: 5px;">
                         <span class="empty-msg">Nenhuma atividade cadastrada nesta aba.</span>
@@ -87,7 +94,10 @@
                 <div class="help-box" style="margin-top: 0; background: #fff; border: 1px solid var(--border-color);">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                         <b class="field-label" id="risk-panel-title" style="margin-bottom: 0;">Riscos do Processo</b>
-                        <button class="btn-edit-action" id="btn-back-to-bank" style="display: none;" onclick="selectActivity(null)">Ver Todos</button>
+                        <div style="display: flex; gap: 5px;">
+                            <button class="btn-edit-action" id="btn-link-all-risks" style="display: none;" onclick="linkActToAllRisks()">Vincular a Todos</button>
+                            <button class="btn-edit-action" id="btn-back-to-bank" style="display: none;" onclick="selectActivity(null)">Ver Todos</button>
+                        </div>
                     </div>
                     
                     <div id="risk-bank-container">
@@ -151,6 +161,20 @@
                     </div>
                 </div>
             </div>
+        </section>
+
+        <section class="section full-width mt-20" id="sec-pop">
+            <div class="section-title" style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+                3. Detalhamento das Atividades (POP)
+                <button class="btn-edit-action no-print" onclick="togglePopEditMode()" id="btn-edit-pop" style="padding: 6px 12px;">Editar POP</button>
+            </div>
+            <p class="no-print" style="font-size: 0.8rem; color: #64748b; margin-bottom: 15px;">Cadastre o passo a passo detalhado (Checklist) para a execução de cada atividade. Clique na atividade para expandir e gerenciar seus passos.</p>
+            
+            <!-- Visualização Interativa (Oculta na impressão) -->
+            <div id="pop-tree-container" class="no-print"></div>
+
+            <!-- Visualização para Impressão/PDF (Oculta na tela) -->
+            <div id="pop-print-container" style="display: none;"></div>
         </section>
     </main>
 
