@@ -48,29 +48,109 @@
         <section class="section full-width mt-20" id="sec-diagram">
             <div class="section-title" style="margin-bottom: 10px;">1. Diagrama do Processo (Imagem)</div>
             
+            <div class="no-print" style="background: #f8fafc; border: 1px solid var(--border-color); border-radius: 4px; padding: 10px 15px; margin-bottom: 15px; display: flex; align-items: center; justify-content: space-between;">
+                <div style="font-size: 0.8rem; color: var(--dark-accent); font-weight: 600;">
+                    📌 Qual modelo deve ser utilizado como base para o Plano de Ação e Implementação?
+                </div>
+                <select id="base-model-select" onchange="setBaseModel(this.value)" style="padding: 4px 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.8rem; font-weight: bold; color: var(--accent); background: #fff; cursor: pointer;">
+                    <option value="auto">Automático (Prioriza TO-BE)</option>
+                    <option value="as-is">Somente AS-IS</option>
+                    <option value="to-be">Somente TO-BE</option>
+                </select>
+            </div>
+
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                 <div class="view-switcher view-switcher-compact no-print" style="margin: 0; border: none;">
                     <button id="btn-view-asis" class="view-tab active" onclick="switchImgView('as-is')">Modelagem AS-IS</button>
                     <button id="btn-view-tobe" class="view-tab" onclick="switchImgView('to-be')">Projeção TO-BE</button>
-                    <button id="btn-view-comp" class="view-tab" onclick="switchImgView('compare')">Comparativo</button>
+                    <button id="btn-view-compare" class="view-tab" onclick="switchImgView('compare')">Comparativo</button>
                 </div>
                 
                 <div class="button-group no-print" id="img-mode-controls">
                     <input type="file" id="img-file" accept="image/*" style="display:none" onchange="importImage(event)">
                     <button class="btn-main btn-secondary" style="padding: 6px 12px; font-size: 0.75rem;" onclick="document.getElementById('img-file').click()">Carregar Imagem</button>
+                    <button id="btn-draw" class="btn-main btn-secondary" style="padding: 6px 12px; font-size: 0.75rem; display: none;" onclick="toggleDrawingMode()">Realizar Marcações</button>
                     <button id="btn-remove-img" class="btn-main btn-danger" style="padding: 6px 12px; font-size: 0.75rem; display: none;" onclick="clearImage()">Remover Imagem</button>
                 </div>
             </div>
+
+            <div id="compare-summary" style="display: none; margin-bottom: 20px; background: #fff; border: 1px solid var(--border-color); border-radius: 6px; padding: 15px;">
+                <h3 style="margin-top: 0; font-size: 1rem; color: var(--dark-accent); text-align: center; margin-bottom: 15px;">Resumo Comparativo (AS-IS vs TO-BE)</h3>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; text-align: center;">
+                    <div style="border-right: 1px dashed var(--border-color);">
+                        <b style="color: var(--primary);">ANTES (AS-IS)</b>
+                        <div id="summary-asis" style="margin-top: 10px; font-size: 0.85rem; color: #475569;"></div>
+                    </div>
+                    <div>
+                        <b style="color: var(--accent);">DEPOIS (TO-BE)</b>
+                        <div id="summary-tobe" style="margin-top: 10px; font-size: 0.85rem; color: #475569;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="draw-toolbar" class="no-print" style="display: none; flex-direction: column; gap: 12px; margin-bottom: 15px; padding: 15px; background: #f8fafc; border: 1px solid var(--border-color); border-radius: 6px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed #cbd5e1; padding-bottom: 10px; margin-bottom: 5px;">
+                    <b style="font-size: 0.85rem; color: var(--dark-accent);">Painel de Marcações</b>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn-main btn-secondary" style="padding: 4px 12px; font-size: 0.75rem;" onclick="undoDraw()" title="Desfazer a última ação (Ctrl+Z)">↩️ Desfazer</button>
+                        <button class="btn-main btn-danger" style="padding: 4px 12px; font-size: 0.75rem;" onclick="clearDrawings()">🗑️ Apagar Tudo</button>
+                        <button class="btn-main btn-secondary" style="padding: 4px 12px; font-size: 0.75rem; font-weight: bold;" onclick="toggleDrawingMode()">✅ Concluir</button>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                    <span style="font-size: 0.75rem; font-weight: 700; color: #64748b; width: 100px;">FERRAMENTA:</span>
+                    <button class="btn-main" style="padding: 4px 12px; font-size: 0.75rem;" onclick="setDrawTool('move', this)">✋ Mover</button>
+                    <button class="btn-main active-tool" style="padding: 4px 12px; font-size: 0.75rem; border: 2px solid #0f172a;" onclick="setDrawTool('pen', this)">🖊️ Caneta</button>
+                    <button class="btn-main" style="padding: 4px 12px; font-size: 0.75rem;" onclick="setDrawTool('rect', this)">⬜ Retângulo</button>
+                    <button class="btn-main" style="padding: 4px 12px; font-size: 0.75rem;" onclick="setDrawTool('circle', this)">⭕ Círculo</button>
+                    <button class="btn-main" style="padding: 4px 12px; font-size: 0.75rem;" onclick="setDrawTool('arrow', this)">↗️ Seta</button>
+                    <button class="btn-main" style="padding: 4px 12px; font-size: 0.75rem;" onclick="setDrawTool('path', this)">🔀 Percurso</button>
+                    <button class="btn-main" style="padding: 4px 12px; font-size: 0.75rem;" onclick="setDrawTool('text', this)">🅰️ Texto</button>
+                </div>
+                <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                    <span style="font-size: 0.75rem; font-weight: 700; color: #64748b; width: 100px;">TIPO DE MARCAÇÃO:</span>
+                    <button class="btn-main color-btn" style="padding: 4px 12px; background: #f97316; color: white; font-size: 0.75rem;" onclick="setDrawType('risco', '#f97316', this)" title="Riscos">Risco</button>
+                    <button class="btn-main color-btn" style="padding: 4px 12px; background: #000000; color: white; font-size: 0.75rem;" onclick="setDrawType('controle', '#000000', this)" title="Controle">Controle</button>
+                    <button class="btn-main color-btn active-color" style="padding: 4px 12px; background: #3b82f6; color: white; border: 2px solid #0f172a; font-size: 0.75rem;" onclick="setDrawType('fluxo-positivo', '#3b82f6', this)" title="Fluxo Positivo">Fluxo Positivo</button>
+                    <button class="btn-main color-btn" style="padding: 4px 12px; background: #ef4444; color: white; font-size: 0.75rem;" onclick="setDrawType('fluxo-negativo', '#ef4444', this)" title="Fluxo Negativo">Fluxo Negativo</button>
+                    <button class="btn-main color-btn" style="padding: 4px 12px; background: #22c55e; color: white; font-size: 0.75rem;" onclick="setDrawType('inserida', '#22c55e', this)" title="Atividades Inseridas">Ativ. Inserida</button>
+                    <button class="btn-main color-btn" style="padding: 4px 12px; background: #ec4899; color: white; font-size: 0.75rem;" onclick="setDrawType('removida', '#ec4899', this)" title="Atividades Removidas">Ativ. Removida</button>
+                </div>
+            </div>
             
+            <div id="diagram-alerts" class="no-print" style="display: none; margin-bottom: 15px; padding: 12px 15px; background: #fffafb; border: 1px solid #fee2e2; border-radius: 6px; color: var(--danger); font-size: 0.85rem; font-weight: 600;"></div>
+
             <div id="img-wrapper" style="position: relative; min-height: 300px; border: 1px dashed var(--border-color); background: #f8fafc; border-radius: 4px; overflow: hidden; display: flex; align-items: center; justify-content: center; padding: 10px;">
                 <div id="img-overlay-empty" style="text-align: center;">
                     <p style="color: #64748b; font-weight: 600; margin-bottom: 15px;">Nenhuma imagem carregada para esta visualização.</p>
                     <button class="btn-main" style="margin: 0 auto;" onclick="document.getElementById('img-file').click()">Carregar Imagem</button>
                 </div>
                 <img id="img-display" style="max-width: 100%; max-height: 600px; display: none; object-fit: contain; box-shadow: 0 4px 6px rgba(0,0,0,0.1);" />
+                <canvas id="draw-canvas" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; display: none;"></canvas>
             </div>
 
-            <div class="grid-2-cols gap-20 mt-20">
+            <div id="compare-wrapper" class="mt-15" style="display: none; grid-template-columns: 1fr 1fr; gap: 15px; min-height: 300px;">
+                <div style="position: relative; border: 1px solid var(--border-color); background: #f8fafc; border-radius: 4px; overflow: hidden; display: flex; flex-direction: column; align-items: center; padding: 10px;">
+                    <b class="field-label" style="text-align: center; margin-bottom: 10px; color: var(--primary);">Modelagem AS-IS</b>
+                    <div id="compare-asis-alerts" class="no-print" style="display: none; width: 100%; margin-bottom: 10px; padding: 8px 10px; background: #fffafb; border: 1px solid #fee2e2; border-radius: 6px; color: var(--danger); font-size: 0.75rem; font-weight: 600;"></div>
+                    <div style="position: relative; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; min-height: 250px;">
+                        <img id="compare-asis-base" style="max-width: 100%; max-height: 500px; object-fit: contain; box-shadow: 0 4px 6px rgba(0,0,0,0.1); display: none;" />
+                        <img id="compare-asis-draw" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; pointer-events: none; display: none;" />
+                        <div id="compare-asis-empty" style="color: #64748b; font-weight: 600; font-size: 0.8rem;">Sem imagem AS-IS</div>
+                    </div>
+                </div>
+                <div style="position: relative; border: 1px solid var(--border-color); background: #f8fafc; border-radius: 4px; overflow: hidden; display: flex; flex-direction: column; align-items: center; padding: 10px;">
+                    <b class="field-label" style="text-align: center; margin-bottom: 10px; color: var(--accent);">Projeção TO-BE</b>
+                    <div id="compare-tobe-alerts" class="no-print" style="display: none; width: 100%; margin-bottom: 10px; padding: 8px 10px; background: #fffafb; border: 1px solid #fee2e2; border-radius: 6px; color: var(--danger); font-size: 0.75rem; font-weight: 600;"></div>
+                    <div style="position: relative; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; min-height: 250px;">
+                        <img id="compare-tobe-base" style="max-width: 100%; max-height: 500px; object-fit: contain; box-shadow: 0 4px 6px rgba(0,0,0,0.1); display: none;" />
+                        <img id="compare-tobe-draw" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; pointer-events: none; display: none;" />
+                        <div id="compare-tobe-empty" style="color: #64748b; font-weight: 600; font-size: 0.8rem;">Sem imagem TO-BE</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid-2-cols gap-20 mt-20" id="normal-act-risk-panels">
                 <div class="help-box" style="margin-top: 0; background: #fff; border: 1px solid var(--border-color);">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                         <b class="field-label" id="activity-panel-title" style="margin-bottom: 0;">Atividades do Modelo</b>
@@ -129,12 +209,23 @@
                     </div>
                 </div>
             </div>
+
+            <div id="compare-act-risk-panels" style="display: none; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;">
+                <div style="background: #f8fafc; border: 1px solid var(--border-color); border-radius: 6px; padding: 15px;">
+                    <h4 style="color: var(--primary); text-align: center; margin-top: 0; margin-bottom: 15px; border-bottom: 1px dashed var(--border-color); padding-bottom: 10px;">AS-IS</h4>
+                    <div id="compare-asis-act-risk"></div>
+                </div>
+                <div style="background: #f8fafc; border: 1px solid var(--border-color); border-radius: 6px; padding: 15px;">
+                    <h4 style="color: var(--accent); text-align: center; margin-top: 0; margin-bottom: 15px; border-bottom: 1px dashed var(--border-color); padding-bottom: 10px;">TO-BE</h4>
+                    <div id="compare-tobe-act-risk"></div>
+                </div>
+            </div>
         </section>
 
         <section class="section full-width mt-20" id="sec-matrix">
             <div class="section-title" style="margin-bottom: 10px;">2. Matriz de Resposta Direta (Atividade X Risco)</div>
             
-            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 30px;">
+            <div id="normal-matrix-panels" style="display: grid; grid-template-columns: 2fr 1fr; gap: 30px;">
                 <div style="overflow-x: auto;">
                     <b class="field-label-light">Priorização Automática de Riscos</b>
                     <table class="actions-table mt-5">
@@ -161,6 +252,35 @@
                     </div>
                 </div>
             </div>
+            
+            <div id="compare-matrix-panels" style="display: none; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div style="background: #f8fafc; border: 1px solid var(--border-color); border-radius: 6px; padding: 15px; display: flex; flex-direction: column;">
+                    <h4 style="color: var(--primary); text-align: center; margin-top: 0; margin-bottom: 15px; border-bottom: 1px dashed var(--border-color); padding-bottom: 10px;">AS-IS</h4>
+                    <div id="compare-asis-matrix" style="overflow-x: auto;"></div>
+                    <div style="text-align: center; margin-top: auto; border-top: 1px dashed var(--border-color); padding-top: 20px;">
+                        <b class="field-label-light">Mapa de Calor (Heatmap) AS-IS</b>
+                        <div id="compare-asis-heatmap" style="display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); gap: 4px; background: #e2e8f0; border: 2px solid #cbd5e1; padding: 4px; aspect-ratio: 1/1; width: 100%; max-width: 250px; margin: 15px auto;">
+                        </div>
+                        <div style="display: flex; justify-content: space-between; font-size: 0.65rem; color: #64748b; font-weight: 700; max-width: 250px; margin: 5px auto 0;">
+                            <span>IMPACTO &rarr;</span>
+                            <span>&uarr; PROBABILIDADE</span>
+                        </div>
+                    </div>
+                </div>
+                <div style="background: #f8fafc; border: 1px solid var(--border-color); border-radius: 6px; padding: 15px; display: flex; flex-direction: column;">
+                    <h4 style="color: var(--accent); text-align: center; margin-top: 0; margin-bottom: 15px; border-bottom: 1px dashed var(--border-color); padding-bottom: 10px;">TO-BE</h4>
+                    <div id="compare-tobe-matrix" style="overflow-x: auto;"></div>
+                    <div style="text-align: center; margin-top: auto; border-top: 1px dashed var(--border-color); padding-top: 20px;">
+                        <b class="field-label-light">Mapa de Calor (Heatmap) TO-BE</b>
+                        <div id="compare-tobe-heatmap" style="display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); gap: 4px; background: #e2e8f0; border: 2px solid #cbd5e1; padding: 4px; aspect-ratio: 1/1; width: 100%; max-width: 250px; margin: 15px auto;">
+                        </div>
+                        <div style="display: flex; justify-content: space-between; font-size: 0.65rem; color: #64748b; font-weight: 700; max-width: 250px; margin: 5px auto 0;">
+                            <span>IMPACTO &rarr;</span>
+                            <span>&uarr; PROBABILIDADE</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </section>
 
         <section class="section full-width mt-20" id="sec-pop">
@@ -170,8 +290,20 @@
             </div>
             <p class="no-print" style="font-size: 0.8rem; color: #64748b; margin-bottom: 15px;">Cadastre o passo a passo detalhado (Checklist) para a execução de cada atividade. Clique na atividade para expandir e gerenciar seus passos.</p>
             
-            <!-- Visualização Interativa (Oculta na impressão) -->
-            <div id="pop-tree-container" class="no-print"></div>
+            <div id="normal-pop-panels">
+                <div id="pop-tree-container" class="no-print"></div>
+            </div>
+            
+            <div id="compare-pop-panels" class="no-print" style="display: none; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div style="background: #f8fafc; border: 1px solid var(--border-color); border-radius: 6px; padding: 15px;">
+                    <h4 style="color: var(--primary); text-align: center; margin-top: 0; margin-bottom: 15px; border-bottom: 1px dashed var(--border-color); padding-bottom: 10px;">AS-IS</h4>
+                    <div id="compare-asis-pop"></div>
+                </div>
+                <div style="background: #f8fafc; border: 1px solid var(--border-color); border-radius: 6px; padding: 15px;">
+                    <h4 style="color: var(--accent); text-align: center; margin-top: 0; margin-bottom: 15px; border-bottom: 1px dashed var(--border-color); padding-bottom: 10px;">TO-BE</h4>
+                    <div id="compare-tobe-pop"></div>
+                </div>
+            </div>
 
             <!-- Visualização para Impressão/PDF (Oculta na tela) -->
             <div id="pop-print-container" style="display: none;"></div>

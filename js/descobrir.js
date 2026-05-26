@@ -1,9 +1,10 @@
 let dbDesc = {
     activeView: 'as-is',
+    baseModel: 'auto',
     models: {
-        'as-is': { image: '', activities: [], risks: [] },
-        'to-be': { image: '', activities: [], risks: [] },
-        'compare': { image: '', activities: [], risks: [] }
+        'as-is': { image: '', drawings: '', legacyDrawing: '', drawingObjects: [], activities: [], risks: [] },
+        'to-be': { image: '', drawings: '', legacyDrawing: '', drawingObjects: [], activities: [], risks: [] },
+        'compare': { image: '', drawings: '', legacyDrawing: '', drawingObjects: [], activities: [], risks: [] }
     }
 };
 let selectedActivityId = null;
@@ -12,6 +13,7 @@ let expandedPopActivities = {};
 
 document.addEventListener('DOMContentLoaded', () => {
     initDescobrirUI();
+    attachDrawingEvents();
 });
 
 async function initDescobrirUI() {
@@ -33,6 +35,12 @@ async function initDescobrirUI() {
             // Migração de Riscos embutidos para globais
             if(parsed.models && parsed.models['as-is']) {
                 ['as-is','to-be','compare'].forEach(k => {
+                    if (parsed.models[k].drawings && (!parsed.models[k].drawingObjects || parsed.models[k].drawingObjects.length === 0)) {
+                        parsed.models[k].legacyDrawing = parsed.models[k].drawings;
+                    }
+                    if (parsed.models[k].drawings === undefined) parsed.models[k].drawings = '';
+                    if (parsed.models[k].legacyDrawing === undefined) parsed.models[k].legacyDrawing = '';
+                    if (parsed.models[k].drawingObjects === undefined) parsed.models[k].drawingObjects = [];
                      if (!parsed.models[k].risks) {
                         parsed.models[k].risks = [];
                     }
@@ -58,6 +66,9 @@ async function initDescobrirUI() {
                 });
             }
 
+            if (parsed.baseModel === undefined) parsed.baseModel = 'auto';
+            const baseSel = document.getElementById('base-model-select');
+            if (baseSel) baseSel.value = parsed.baseModel;
 
             dbDesc = { ...dbDesc, ...parsed }; 
         } catch(e) {}
@@ -109,21 +120,89 @@ function switchImgView(view) {
     document.querySelectorAll('.view-tab').forEach(t => t.classList.remove('active'));
     document.getElementById(`btn-view-${view.replace('-','')}`).classList.add('active');
 
-    const model = dbDesc.models[view];
-    const imgEmpty = document.getElementById('img-overlay-empty');
-    const imgDisplay = document.getElementById('img-display');
-    const btnRemove = document.getElementById('btn-remove-img');
+    const isCompare = view === 'compare';
 
-    if (model.image) {
-        imgEmpty.style.display = 'none';
-        imgDisplay.src = model.image;
-        imgDisplay.style.display = 'block';
-        btnRemove.style.display = 'inline-block';
+    const imgWrapper = document.getElementById('img-wrapper');
+    const compareWrapper = document.getElementById('compare-wrapper');
+    const imgModeControls = document.getElementById('img-mode-controls');
+
+    const compareSummary = document.getElementById('compare-summary');
+    if (compareSummary) compareSummary.style.display = isCompare ? 'block' : 'none';
+    
+    document.getElementById('normal-act-risk-panels').style.display = isCompare ? 'none' : 'grid';
+    document.getElementById('compare-act-risk-panels').style.display = isCompare ? 'grid' : 'none';
+
+    document.getElementById('normal-matrix-panels').style.display = isCompare ? 'none' : 'grid';
+    document.getElementById('compare-matrix-panels').style.display = isCompare ? 'grid' : 'none';
+
+    document.getElementById('normal-pop-panels').style.display = isCompare ? 'none' : 'block';
+    document.getElementById('compare-pop-panels').style.display = isCompare ? 'grid' : 'none';
+
+    const btnEditPop = document.getElementById('btn-edit-pop');
+    if (btnEditPop) btnEditPop.style.display = isCompare ? 'none' : 'inline-block';
+
+    if (isCompare) {
+        imgWrapper.style.display = 'none';
+        compareWrapper.style.display = 'grid';
+        imgModeControls.style.display = 'none';
+        document.getElementById('draw-toolbar').style.display = 'none';
+        isDrawingMode = false;
+        
+        ['as-is', 'to-be'].forEach(mode => {
+            const mData = dbDesc.models[mode];
+            const baseImg = document.getElementById(`compare-${mode.replace('-','')}-base`);
+            const drawImg = document.getElementById(`compare-${mode.replace('-','')}-draw`);
+            const emptyTxt = document.getElementById(`compare-${mode.replace('-','')}-empty`);
+            
+            if (mData.image) {
+                baseImg.src = mData.image;
+                baseImg.style.display = 'block';
+                if (mData.drawings) {
+                    drawImg.src = mData.drawings;
+                    drawImg.style.display = 'block';
+                } else {
+                    drawImg.style.display = 'none';
+                }
+                emptyTxt.style.display = 'none';
+            } else {
+                baseImg.style.display = 'none';
+                drawImg.style.display = 'none';
+                emptyTxt.style.display = 'block';
+            }
+        });
     } else {
-        imgEmpty.style.display = 'block';
-        imgDisplay.src = '';
-        imgDisplay.style.display = 'none';
-        btnRemove.style.display = 'none';
+        imgWrapper.style.display = 'flex';
+        compareWrapper.style.display = 'none';
+        imgModeControls.style.display = 'flex';
+        
+        const model = dbDesc.models[view];
+        const imgEmpty = document.getElementById('img-overlay-empty');
+        const imgDisplay = document.getElementById('img-display');
+        const btnRemove = document.getElementById('btn-remove-img');
+        const btnDraw = document.getElementById('btn-draw');
+        const drawCanvas = document.getElementById('draw-canvas');
+
+        isDrawingMode = false;
+        drawCanvas.style.pointerEvents = 'none';
+        drawCanvas.style.cursor = 'default';
+        document.getElementById('draw-toolbar').style.display = 'none';
+
+        if (model.image) {
+            imgEmpty.style.display = 'none';
+            imgDisplay.src = model.image;
+            imgDisplay.style.display = 'block';
+            btnRemove.style.display = 'inline-block';
+            btnDraw.style.display = 'inline-block';
+            drawCanvas.style.display = 'block';
+            setTimeout(setupCanvas, 50); // Setup after layout
+        } else {
+            imgEmpty.style.display = 'block';
+            imgDisplay.src = '';
+            imgDisplay.style.display = 'none';
+            btnRemove.style.display = 'none';
+            btnDraw.style.display = 'none';
+            drawCanvas.style.display = 'none';
+        }
     }
 
     selectedActivityId = null;
@@ -166,6 +245,9 @@ function importImage(event) {
             try {
                 const dataUrl = canvas.toDataURL('image/jpeg', 0.85); // 85% para economizar armazenamento
                 dbDesc.models[dbDesc.activeView].image = dataUrl;
+                dbDesc.models[dbDesc.activeView].drawings = '';
+                dbDesc.models[dbDesc.activeView].legacyDrawing = '';
+                dbDesc.models[dbDesc.activeView].drawingObjects = [];
                 saveDesc();
                 switchImgView(dbDesc.activeView);
                 showToast("Imagem carregada com sucesso!", "success");
@@ -182,10 +264,19 @@ function importImage(event) {
 function clearImage() {
     if (confirm("Tem certeza que deseja remover a imagem desta visualização?")) {
         dbDesc.models[dbDesc.activeView].image = '';
+        dbDesc.models[dbDesc.activeView].drawings = '';
+        dbDesc.models[dbDesc.activeView].legacyDrawing = '';
+        dbDesc.models[dbDesc.activeView].drawingObjects = [];
         saveDesc();
         switchImgView(dbDesc.activeView);
         showToast("Imagem removida com sucesso!", "success");
     }
+}
+
+function setBaseModel(val) {
+    dbDesc.baseModel = val;
+    saveDesc();
+    showToast("Modelo base para planejamento atualizado.", "success");
 }
 
 function toggleDropdown(event) {
@@ -241,9 +332,9 @@ function zerarArtefato() {
         dbDesc = {
             activeView: 'as-is',
             models: {
-                'as-is': { image: '', activities: [], risks: [] },
-                'to-be': { image: '', activities: [], risks: [] },
-                'compare': { image: '', activities: [], risks: [] }
+                    'as-is': { image: '', drawings: '', legacyDrawing: '', drawingObjects: [], activities: [], risks: [] },
+                    'to-be': { image: '', drawings: '', legacyDrawing: '', drawingObjects: [], activities: [], risks: [] },
+                    'compare': { image: '', drawings: '', legacyDrawing: '', drawingObjects: [], activities: [], risks: [] }
             }
         };
         selectedActivityId = null;
@@ -256,7 +347,11 @@ function zerarArtefato() {
 }
 
 function printPage() {
-    renderPrintPOPs();
+    if (dbDesc.activeView !== 'compare') {
+        renderPrintPOPs();
+    } else {
+        document.getElementById('pop-print-container').innerHTML = '';
+    }
     const a = document.querySelector('.container'); 
     if(a) a.classList.add('pdf-mode'); 
 
@@ -322,11 +417,176 @@ function selectRisk(id) {
 }
 
 function renderAll() {
-    renderActivityList();
-    renderRiskList();
-    renderMatrix();
-    renderHeatmap();
-    renderPop();
+    if (dbDesc.activeView === 'compare') {
+        renderCompareSummary();
+        renderCompareActRisk('as-is');
+        renderCompareActRisk('to-be');
+        renderCompareMatrix('as-is');
+        renderCompareMatrix('to-be');
+        renderCompareHeatmap('as-is');
+        renderCompareHeatmap('to-be');
+        renderComparePop('as-is');
+        renderComparePop('to-be');
+    } else {
+        renderActivityList();
+        renderRiskList();
+        renderMatrix();
+        renderHeatmap();
+        renderPop();
+    }
+    checkDiagramAlerts();
+}
+
+function renderCompareSummary() {
+    const asis = dbDesc.models['as-is'];
+    const tobe = dbDesc.models['to-be'];
+    
+    const countControls = (model) => {
+        let count = 0;
+        (model.drawingObjects || []).forEach(o => {
+            if (o.type === 'controle' || o.color === '#000000') count++;
+        });
+        return count;
+    };
+    
+    document.getElementById('summary-asis').innerHTML = `
+        <p style="margin: 5px 0;"><strong>Atividades:</strong> <span style="color: var(--primary); font-size: 1.1rem; font-weight: 800;">${asis.activities.length}</span></p>
+        <p style="margin: 5px 0;"><strong>Riscos Identificados:</strong> <span style="color: var(--primary); font-size: 1.1rem; font-weight: 800;">${asis.risks.length}</span></p>
+        <p style="margin: 5px 0;"><strong>Controles (Marcações):</strong> <span style="color: var(--primary); font-size: 1.1rem; font-weight: 800;">${countControls(asis)}</span></p>
+    `;
+    
+    document.getElementById('summary-tobe').innerHTML = `
+        <p style="margin: 5px 0;"><strong>Atividades:</strong> <span style="color: var(--accent); font-size: 1.1rem; font-weight: 800;">${tobe.activities.length}</span></p>
+        <p style="margin: 5px 0;"><strong>Riscos Identificados:</strong> <span style="color: var(--accent); font-size: 1.1rem; font-weight: 800;">${tobe.risks.length}</span></p>
+        <p style="margin: 5px 0;"><strong>Controles (Marcações):</strong> <span style="color: var(--accent); font-size: 1.1rem; font-weight: 800;">${countControls(tobe)}</span></p>
+    `;
+}
+
+function renderCompareActRisk(mode) {
+    const container = document.getElementById(`compare-${mode.replace('-','')}-act-risk`);
+    const acts = dbDesc.models[mode].activities;
+    const allRisks = dbDesc.models[mode].risks;
+    
+    let html = `<div style="margin-bottom: 15px;"><b class="field-label-light">Atividades (${acts.length})</b>`;
+    if (acts.length === 0) {
+        html += '<span class="empty-msg">Nenhuma atividade</span>';
+    } else {
+        acts.forEach(a => {
+            const riskCount = a.riskAssocs ? a.riskAssocs.length : 0;
+            let riskIcon = '';
+            if (riskCount > 0) riskIcon = `⚠️ (${riskCount})`;
+            else if (a.noRisk) riskIcon = `✅ (0)`;
+            else riskIcon = `(0)`;
+            
+            html += `<div class="mini-card" style="background: #fff; margin-bottom: 5px; font-size: 0.75rem; display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-weight: 600; color: #475569;">${a.name}</span>
+                <span style="color: var(--dark-accent); font-weight: bold;">${riskIcon}</span>
+            </div>`;
+        });
+    }
+    html += `</div>`;
+    
+    html += `<div><b class="field-label-light">Riscos (${allRisks.length})</b>`;
+    if (allRisks.length === 0) {
+        html += '<span class="empty-msg">Nenhum risco</span>';
+    } else {
+        allRisks.forEach(r => {
+            const linkedActs = acts.filter(a => !a.noRisk && a.riskAssocs.find(ra => ra.riskId === r.id));
+            html += `<div class="mini-card" style="background: #fff; margin-bottom: 5px; font-size: 0.75rem; display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-weight: 600; color: #475569;">${r.desc}</span>
+                <span style="color: var(--dark-accent); font-weight: bold;">📋 (${linkedActs.length})</span>
+            </div>`;
+        });
+    }
+    html += `</div>`;
+    container.innerHTML = html;
+}
+
+function renderCompareMatrix(mode) {
+    const container = document.getElementById(`compare-${mode.replace('-','')}-matrix`);
+    const acts = dbDesc.models[mode].activities;
+    const allRisks = dbDesc.models[mode].risks;
+    
+    let rows = [];
+    acts.forEach(act => {
+        if (!act.noRisk && act.riskAssocs && act.riskAssocs.length > 0) {
+            act.riskAssocs.forEach((ra) => {
+                const r = allRisks.find(x => x.id === ra.riskId);
+                if (r) {
+                    rows.push({ act: act, ra: ra, r: r, score: ra.prob * ra.imp, order: ra.order || 0 });
+                }
+            });
+        }
+    });
+
+    rows.sort((a, b) => {
+        if (a.score !== b.score) return b.score - a.score;
+        return (a.order || 0) - (b.order || 0);
+    });
+
+    let html = `<table class="actions-table" style="font-size: 0.7rem; margin-top: 0;"><thead><tr><th>Atividade</th><th>Risco</th><th>Score</th></tr></thead><tbody>`;
+    if (rows.length === 0) {
+        html += `<tr><td colspan="3" class="empty-state">Sem dados de matriz</td></tr>`;
+    } else {
+        rows.forEach(row => {
+            const lvl = getRiskLevelInfo(row.ra.prob, row.ra.imp);
+            html += `<tr><td style="max-width: 100px; overflow-wrap: break-word;">${row.act.name}</td><td style="max-width: 120px; overflow-wrap: break-word;">${row.r.desc}</td><td><span class="cat-badge" style="background:${lvl.bg}; color:${lvl.col}; border-color:${lvl.col}; padding: 2px 4px; font-size: 0.6rem;">${lvl.lbl} (${row.score})</span></td></tr>`;
+        });
+    }
+    html += `</tbody></table>`;
+    container.innerHTML = html;
+}
+
+function renderCompareHeatmap(mode) {
+    const hm = document.getElementById(`compare-${mode.replace('-','')}-heatmap`);
+    if (!hm) return;
+    const counts = { '3-1':0, '3-2':0, '3-3':0, '2-1':0, '2-2':0, '2-3':0, '1-1':0, '1-2':0, '1-3':0 };
+    
+    dbDesc.models[mode].activities.forEach(act => {
+        if (!act.noRisk && act.riskAssocs) {
+            act.riskAssocs.forEach(ra => {
+                counts[`${ra.prob}-${ra.imp}`]++;
+            });
+        }
+    });
+
+    const makeCell = (p, i, bg) => {
+        const val = counts[`${p}-${i}`];
+        const text = val > 0 ? `<b style="font-size:1.5rem; color:#fff; text-shadow: 0 1px 2px rgba(0,0,0,0.5);">${val}</b>` : '';
+        return `<div style="background:${bg}; display:flex; align-items:center; justify-content:center; border-radius:2px;">${text}</div>`;
+    };
+
+    hm.innerHTML = `
+        ${makeCell(3, 1, '#facc15')} ${makeCell(3, 2, '#ef4444')} ${makeCell(3, 3, '#b91c1c')}
+        ${makeCell(2, 1, '#4ade80')} ${makeCell(2, 2, '#facc15')} ${makeCell(2, 3, '#ef4444')}
+        ${makeCell(1, 1, '#22c55e')} ${makeCell(1, 2, '#4ade80')} ${makeCell(1, 3, '#facc15')}
+    `;
+}
+
+function renderComparePop(mode) {
+    const container = document.getElementById(`compare-${mode.replace('-','')}-pop`);
+    const acts = dbDesc.models[mode].activities;
+    let html = '<div style="display: flex; flex-direction: column; gap: 10px;">';
+    const popActs = acts.filter(a => a.steps && a.steps.length > 0);
+    if (popActs.length === 0) {
+        container.innerHTML = '<span class="empty-msg">Nenhum POP cadastrado</span>';
+        return;
+    }
+    popActs.forEach(a => {
+        html += `<div style="border: 1px solid var(--border-color); border-radius: 6px; background: #fff; overflow: hidden; margin-bottom: 5px;"><div style="padding: 8px 12px; background: #f8fafc; font-weight: 600; color: #334155; font-size: 0.75rem; display: flex; justify-content: space-between;"><span>${a.name}</span><span style="color: #64748b;">${a.steps.length} passos</span></div><div style="padding: 10px;">`;
+        a.steps.forEach((step, idx) => {
+            const st = step.status;
+            let stText = '', stCol = '';
+            if (st === 'sim') { stText = 'Sim'; stCol = '#22c55e'; }
+            else if (st === 'nao') { stText = 'Não'; stCol = '#ef4444'; }
+            else if (st === 'na') { stText = 'N/A'; stCol = '#64748b'; }
+            const badge = stText ? `<span style="font-size: 0.6rem; padding: 1px 4px; border-radius: 4px; background: ${stCol}; color: #fff; white-space: nowrap;">${stText}</span>` : '';
+            html += `<div style="display: flex; gap: 8px; align-items: flex-start; padding: 4px 0; font-size: 0.7rem; border-bottom: 1px dashed #f1f5f9;"><b style="color: var(--accent); min-width: 15px;">${idx + 1}.</b><span style="flex: 1;">${step.desc}</span>${badge}</div>`;
+        });
+        html += `</div></div>`;
+    });
+    html += '</div>';
+    container.innerHTML = html;
 }
 
 function addActivity() {
@@ -761,49 +1021,123 @@ function getRiskLevelInfo(p, i) {
     return { lbl: 'Baixo', col: '#16a34a', bg: '#f0fdf4' }; // Verde
 }
 
+let dragMatrixActId = null;
+let dragMatrixRiskId = null;
+let dragMatrixScore = null;
+
+function onDragStartMatrix(e, actId, rId, score) {
+    dragMatrixActId = actId;
+    dragMatrixRiskId = rId;
+    dragMatrixScore = parseInt(score);
+    e.dataTransfer.effectAllowed = 'move';
+    setTimeout(() => e.target.classList.add('dragging-matrix'), 0);
+}
+
+function onDragOverMatrix(e, score) {
+    if (parseInt(score) === dragMatrixScore) {
+        e.preventDefault();
+        e.currentTarget.classList.add('drag-over-matrix');
+    }
+}
+
+function onDragLeaveMatrix(e) {
+    e.currentTarget.classList.remove('drag-over-matrix');
+}
+
+function onDropMatrix(e, targetActId, targetRId, score) {
+    e.preventDefault();
+    e.currentTarget.classList.remove('drag-over-matrix');
+    if (parseInt(score) !== dragMatrixScore) return;
+    if (dragMatrixActId === targetActId && dragMatrixRiskId === targetRId) return;
+
+    let itemsWithScore = [];
+    dbDesc.models[dbDesc.activeView].activities.forEach(act => {
+        if (act.riskAssocs) {
+            act.riskAssocs.forEach(ra => {
+                if (ra.prob * ra.imp === dragMatrixScore) {
+                    itemsWithScore.push({ actId: act.id, rId: ra.riskId, ra: ra });
+                }
+            });
+        }
+    });
+
+    itemsWithScore.sort((a, b) => (a.ra.order || 0) - (b.ra.order || 0));
+
+    const sourceIdx = itemsWithScore.findIndex(x => x.actId === dragMatrixActId && x.rId === dragMatrixRiskId);
+    const targetIdx = itemsWithScore.findIndex(x => x.actId === targetActId && x.rId === targetRId);
+
+    if (sourceIdx >= 0 && targetIdx >= 0) {
+        const item = itemsWithScore.splice(sourceIdx, 1)[0];
+        itemsWithScore.splice(targetIdx, 0, item);
+        
+        itemsWithScore.forEach((x, i) => {
+            x.ra.order = i;
+        });
+
+        saveDesc();
+        renderMatrix();
+    }
+}
+
 function renderMatrix() {
     const tbody = document.getElementById('matrix-body');
     let html = '';
     let hasItems = false;
     
     const allRisks = dbDesc.models[dbDesc.activeView].risks;
+    let rows = [];
     
     dbDesc.models[dbDesc.activeView].activities.forEach(act => {
         if (act.noRisk) {
-            hasItems = true;
-            html += `<tr>
-                <td style="font-size:0.75rem; font-weight:700; color:#475569; max-width: 150px; overflow-wrap: break-word;">${act.name}</td>
-                <td colspan="4" style="font-size:0.75rem; color:#16a34a; font-style:italic; text-align:center;">Atividade não possui risco associado</td>
-            </tr>`;
+            rows.push({ act: act, type: 'norisk', score: -1, order: 0 });
         } else if (act.riskAssocs && act.riskAssocs.length > 0) {
             act.riskAssocs.forEach((ra) => {
                 const r = allRisks.find(x => x.id === ra.riskId);
                 if (r) {
-                    hasItems = true;
-                    const lvl = getRiskLevelInfo(ra.prob, ra.imp);
-                    html += `<tr>
-                        <td style="font-size:0.75rem; font-weight:700; color:#475569; max-width: 150px; overflow-wrap: break-word;">${act.name}</td>
-                        <td style="font-size:0.75rem; max-width: 250px; overflow-wrap: break-word;">${r.desc}</td>
-                        <td>
-                            <select class="status-select-inline" onchange="updateRiskVal('${act.id}', '${r.id}', 'prob', this.value)">
-                                <option value="1" ${ra.prob===1?'selected':''}>1 - Baixa</option>
-                                <option value="2" ${ra.prob===2?'selected':''}>2 - Média</option>
-                                <option value="3" ${ra.prob===3?'selected':''}>3 - Alta</option>
-                            </select>
-                        </td>
-                        <td>
-                            <select class="status-select-inline" onchange="updateRiskVal('${act.id}', '${r.id}', 'imp', this.value)">
-                                <option value="1" ${ra.imp===1?'selected':''}>1 - Baixo</option>
-                                <option value="2" ${ra.imp===2?'selected':''}>2 - Médio</option>
-                                <option value="3" ${ra.imp===3?'selected':''}>3 - Alto</option>
-                            </select>
-                        </td>
-                        <td>
-                            <span class="cat-badge" style="background:${lvl.bg}; color:${lvl.col}; border-color:${lvl.col};">${lvl.lbl} (${ra.prob * ra.imp})</span>
-                        </td>
-                    </tr>`;
+                    rows.push({ act: act, ra: ra, r: r, type: 'risk', score: ra.prob * ra.imp, order: ra.order || 0 });
                 }
             });
+        }
+    });
+
+    rows.sort((a, b) => {
+        if (a.score !== b.score) return b.score - a.score;
+        return (a.order || 0) - (b.order || 0);
+    });
+
+    rows.forEach(row => {
+        hasItems = true;
+        if (row.type === 'norisk') {
+            html += `<tr>
+                <td style="font-size:0.75rem; font-weight:700; color:#475569; max-width: 150px; overflow-wrap: break-word;">${row.act.name}</td>
+                <td colspan="4" style="font-size:0.75rem; color:#16a34a; font-style:italic; text-align:center;">Atividade não possui risco associado</td>
+            </tr>`;
+        } else {
+            const { act, ra, r, score } = row;
+            const lvl = getRiskLevelInfo(ra.prob, ra.imp);
+            html += `<tr class="matrix-row hover-trigger" draggable="true" ondragstart="onDragStartMatrix(event, '${act.id}', '${r.id}', ${score})" ondragend="this.classList.remove('dragging-matrix')" ondragover="onDragOverMatrix(event, ${score})" ondragleave="onDragLeaveMatrix(event)" ondrop="onDropMatrix(event, '${act.id}', '${r.id}', ${score})">
+                <td style="font-size:0.75rem; font-weight:700; color:#475569; max-width: 150px; overflow-wrap: break-word;">
+                    <span class="matrix-drag-handle no-print" title="Segure para arrastar e reordenar (Apenas empates)">☰</span>${act.name}
+                </td>
+                <td style="font-size:0.75rem; max-width: 250px; overflow-wrap: break-word;">${r.desc}</td>
+                <td>
+                    <select class="status-select-inline" onchange="updateRiskVal('${act.id}', '${r.id}', 'prob', this.value)">
+                        <option value="1" ${ra.prob===1?'selected':''}>1 - Baixa</option>
+                        <option value="2" ${ra.prob===2?'selected':''}>2 - Média</option>
+                        <option value="3" ${ra.prob===3?'selected':''}>3 - Alta</option>
+                    </select>
+                </td>
+                <td>
+                    <select class="status-select-inline" onchange="updateRiskVal('${act.id}', '${r.id}', 'imp', this.value)">
+                        <option value="1" ${ra.imp===1?'selected':''}>1 - Baixo</option>
+                        <option value="2" ${ra.imp===2?'selected':''}>2 - Médio</option>
+                        <option value="3" ${ra.imp===3?'selected':''}>3 - Alto</option>
+                    </select>
+                </td>
+                <td>
+                    <span class="cat-badge" style="background:${lvl.bg}; color:${lvl.col}; border-color:${lvl.col};">${lvl.lbl} (${score})</span>
+                </td>
+            </tr>`;
         }
     });
 
@@ -973,11 +1307,6 @@ function getPopMediaHtml(url) {
 }
 
 function setPopStepStatus(actId, stepId, status) {
-    saveDesc();
-    renderPop();
-}
-
-function setPopStepStatus(actId, stepId, status) {
     const act = dbDesc.models[dbDesc.activeView].activities.find(a => a.id === actId);
     if (!act || !act.steps) return;
     const step = act.steps.find(s => s.id === stepId);
@@ -1144,5 +1473,659 @@ function saveDesc() {
         updateBreadcrumbs();
     } catch (e) {
         showToast("Erro ao salvar: Limite de armazenamento atingido.", "error");
+    }
+}
+
+// --- LÓGICA DE MARCAÇÃO NA IMAGEM (DESENHO) --- //
+
+let isDrawingMode = false;
+let isDrawing = false;
+let drawTool = 'pen'; // 'pen', 'rect', 'circle', 'arrow', 'path', 'text'
+let drawType = 'fluxo-positivo';
+let drawColor = '#3b82f6'; // Azul por padrão (Fluxo positivo)
+let drawContext = null;
+let lastX = 0;
+let lastY = 0;
+let currentShape = null;
+let legacyImage = null;
+let selectedShapeIndex = -1;
+let dragStartX = 0;
+let dragStartY = 0;
+let isEditingText = false;
+let isDrawingPath = false;
+let pathPoints = [];
+
+function getDiagramAlerts(model) {
+    const hasRegisteredRisks = model.risks && model.risks.length > 0;
+    const hasRiskDrawings = (model.drawingObjects || []).some(o => o.type === 'risco' || o.color === '#f97316');
+
+    let alerts = [];
+    if (hasRegisteredRisks && !hasRiskDrawings) {
+        alerts.push('Existem riscos cadastrados na lista, mas nenhuma marcação correspondente de Risco (Laranja) desenhada na imagem.');
+    } else if (!hasRegisteredRisks && hasRiskDrawings) {
+        alerts.push('Existem marcações de Risco (Laranja) na imagem, mas nenhum risco correspondente se encontra cadastrado na lista.');
+    }
+    return alerts;
+}
+
+function checkDiagramAlerts() {
+    const mainAlertsBox = document.getElementById('diagram-alerts');
+    const compareAsIsAlerts = document.getElementById('compare-asis-alerts');
+    const compareToBeAlerts = document.getElementById('compare-tobe-alerts');
+
+    if (dbDesc.activeView === 'compare') {
+        if (mainAlertsBox) mainAlertsBox.style.display = 'none';
+        
+        if (compareAsIsAlerts) {
+            const alertsAsIs = getDiagramAlerts(dbDesc.models['as-is']);
+            if (alertsAsIs.length > 0) {
+                compareAsIsAlerts.innerHTML = '⚠️ <b style="color:var(--danger)">Inconsistência de Mapeamento</b><br>' + alertsAsIs.map(a => `• ${a}`).join('<br>');
+                compareAsIsAlerts.style.display = 'block';
+            } else {
+                compareAsIsAlerts.style.display = 'none';
+            }
+        }
+
+        if (compareToBeAlerts) {
+            const alertsToBe = getDiagramAlerts(dbDesc.models['to-be']);
+            if (alertsToBe.length > 0) {
+                compareToBeAlerts.innerHTML = '⚠️ <b style="color:var(--danger)">Inconsistência de Mapeamento</b><br>' + alertsToBe.map(a => `• ${a}`).join('<br>');
+                compareToBeAlerts.style.display = 'block';
+            } else {
+                compareToBeAlerts.style.display = 'none';
+            }
+        }
+    } else {
+        if (compareAsIsAlerts) compareAsIsAlerts.style.display = 'none';
+        if (compareToBeAlerts) compareToBeAlerts.style.display = 'none';
+
+        if (mainAlertsBox) {
+            const alerts = getDiagramAlerts(dbDesc.models[dbDesc.activeView]);
+            if (alerts.length > 0) {
+                mainAlertsBox.innerHTML = '⚠️ <b style="color:var(--danger)">Atenção: Inconsistência de Mapeamento</b><br>' + alerts.map(a => `• ${a}`).join('<br>');
+                mainAlertsBox.style.display = 'block';
+            } else {
+                mainAlertsBox.style.display = 'none';
+            }
+        }
+    }
+}
+
+function openInlineEditor(x, y, initialText, onComplete) {
+    if (isEditingText) return;
+    isEditingText = true;
+    
+    const wrapper = document.getElementById('img-wrapper');
+    const canvas = document.getElementById('draw-canvas');
+    let input = document.getElementById('inline-text-editor');
+    
+    if (!input) {
+        input = document.createElement('input');
+        input.type = 'text';
+        input.id = 'inline-text-editor';
+        input.className = 'inline-text-editor no-print';
+        input.placeholder = 'Digite o texto e aperte Enter...';
+        wrapper.appendChild(input);
+    }
+    
+    let left = x;
+    let top = y;
+    if (left + 220 > canvas.width) left = canvas.width - 220;
+    if (top + 40 > canvas.height) top = canvas.height - 40;
+    if (left < 0) left = 10;
+    if (top < 0) top = 10;
+
+    input.style.left = left + 'px';
+    input.style.top = top + 'px';
+    input.value = initialText || '';
+    input.style.display = 'block';
+    input.focus();
+
+    const finishEditing = () => {
+        if (input.style.display === 'none') return;
+        input.style.display = 'none';
+        input.removeEventListener('blur', finishEditing);
+        input.removeEventListener('keydown', handleKey);
+        isDrawing = false;
+        setTimeout(() => isEditingText = false, 150);
+        if (onComplete) onComplete(input.value.trim());
+    };
+
+    const handleKey = (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            finishEditing();
+        } else if (e.key === 'Escape') {
+            e.preventDefault();
+            input.value = initialText || ''; 
+            finishEditing();
+        }
+        e.stopPropagation();
+    };
+
+    input.addEventListener('blur', finishEditing);
+    input.addEventListener('keydown', handleKey);
+}
+
+document.addEventListener('keydown', (e) => {
+    if (isDrawingMode && !isEditingText) {
+        if (e.key === 'Escape' && drawTool === 'path' && isDrawingPath) {
+            e.preventDefault();
+            finishPath();
+            return;
+        }
+        if (e.ctrlKey && e.key.toLowerCase() === 'z') {
+            e.preventDefault();
+            undoDraw();
+        } else if (e.key === 'F2') {
+            e.preventDefault();
+            if (selectedShapeIndex !== -1) {
+                const shape = dbDesc.models[dbDesc.activeView].drawingObjects[selectedShapeIndex];
+                const bb = getBoundingBox(shape);
+                const x = Math.max(10, bb.x);
+                const y = Math.max(10, bb.y + bb.h + 5);
+                const isTextTool = shape.tool === 'text';
+                const initialText = isTextTool ? shape.text : (shape.label || '');
+
+                openInlineEditor(x, y, initialText, (newText) => {
+                    if (isTextTool) {
+                        shape.text = newText;
+                    } else {
+                        shape.label = newText;
+                    }
+                    saveDrawing();
+                    redrawAll();
+                });
+            } else {
+                showToast("Selecione um elemento com a ferramenta 'Mover' primeiro para editá-lo.", "warning");
+            }
+        }
+    }
+});
+
+function undoDraw() {
+    if (!isDrawingMode) return;
+    const objects = dbDesc.models[dbDesc.activeView].drawingObjects;
+    if (objects && objects.length > 0) {
+        objects.pop();
+        redrawAll();
+        saveDrawing();
+    }
+}
+
+function finishPath() {
+    if (isDrawingPath && currentShape && currentShape.points.length > 1) {
+        if (!dbDesc.models[dbDesc.activeView].drawingObjects) {
+            dbDesc.models[dbDesc.activeView].drawingObjects = [];
+        }
+        const shapeToSave = {...currentShape};
+        delete shapeToSave.previewX;
+        delete shapeToSave.previewY;
+        dbDesc.models[dbDesc.activeView].drawingObjects.push(shapeToSave);
+        
+        isDrawingPath = false;
+        pathPoints = [];
+        currentShape = null;
+        redrawAll();
+        saveDrawing();
+
+        setTimeout(() => {
+            const bb = getBoundingBox(shapeToSave);
+            const lx = Math.max(10, bb.x + (bb.w / 2) - 50);
+            const ly = Math.max(10, bb.y + bb.h + 10);
+            openInlineEditor(lx, ly, '', (newLabel) => {
+                if (newLabel && newLabel !== '') {
+                    shapeToSave.label = newLabel;
+                    redrawAll();
+                    saveDrawing();
+                }
+            });
+        }, 50);
+    } else {
+        isDrawingPath = false;
+        pathPoints = [];
+        currentShape = null;
+        redrawAll();
+    }
+}
+
+function getBoundingBox(shape) {
+    if (shape.tool === 'pen' || shape.tool === 'path') {
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        shape.points.forEach(p => {
+            if (p.x < minX) minX = p.x;
+            if (p.y < minY) minY = p.y;
+            if (p.x > maxX) maxX = p.x;
+            if (p.y > maxY) maxY = p.y;
+        });
+        return { x: minX - 5, y: minY - 5, w: maxX - minX + 10, h: maxY - minY + 10 };
+    } else if (shape.tool === 'rect') {
+        return { x: Math.min(shape.x, shape.x + shape.w) - 5, y: Math.min(shape.y, shape.y + shape.h) - 5, w: Math.abs(shape.w) + 10, h: Math.abs(shape.h) + 10 };
+    } else if (shape.tool === 'circle') {
+        return { x: shape.x - shape.radius - 5, y: shape.y - shape.radius - 5, w: shape.radius * 2 + 10, h: shape.radius * 2 + 10 };
+    } else if (shape.tool === 'arrow') {
+        let minX = Math.min(shape.x1, shape.x2), minY = Math.min(shape.y1, shape.y2);
+        let maxX = Math.max(shape.x1, shape.x2), maxY = Math.max(shape.y1, shape.y2);
+        return { x: minX - 5, y: minY - 5, w: maxX - minX + 10, h: maxY - minY + 10 };
+    } else if (shape.tool === 'text') {
+        drawContext.font = "bold 20px 'Open Sans', sans-serif";
+        const metrics = drawContext.measureText(shape.text);
+        return { x: shape.x, y: shape.y - 20, w: metrics.width, h: 25 };
+    }
+    return {x: 0, y: 0, w: 0, h: 0};
+}
+
+function hitTest(x, y, shape) {
+    const bb = getBoundingBox(shape);
+    return (x >= bb.x && x <= bb.x + bb.w && y >= bb.y && y <= bb.y + bb.h);
+}
+
+function moveShape(shape, dx, dy) {
+    if (shape.tool === 'pen' || shape.tool === 'path') {
+        shape.points.forEach(p => { p.x += dx; p.y += dy; });
+    } else if (shape.tool === 'rect') {
+        shape.x += dx; shape.y += dy;
+    } else if (shape.tool === 'circle') {
+        shape.x += dx; shape.y += dy;
+    } else if (shape.tool === 'arrow') {
+        shape.x1 += dx; shape.y1 += dy;
+        shape.x2 += dx; shape.y2 += dy;
+    } else if (shape.tool === 'text') {
+        shape.x += dx; shape.y += dy;
+    }
+}
+
+function drawShape(shape) {
+    drawContext.strokeStyle = shape.color;
+    drawContext.fillStyle = shape.fill || 'transparent';
+    drawContext.lineWidth = 4;
+    drawContext.lineCap = 'round';
+    drawContext.lineJoin = 'round';
+
+    if (shape.tool === 'pen') {
+        if (!shape.points || shape.points.length === 0) return;
+        drawContext.beginPath();
+        drawContext.moveTo(shape.points[0].x, shape.points[0].y);
+        for (let i = 1; i < shape.points.length; i++) {
+            drawContext.lineTo(shape.points[i].x, shape.points[i].y);
+        }
+        drawContext.stroke();
+    } else if (shape.tool === 'rect') {
+        if (shape.fill !== 'transparent') drawContext.fillRect(shape.x, shape.y, shape.w, shape.h);
+        drawContext.strokeRect(shape.x, shape.y, shape.w, shape.h);
+    } else if (shape.tool === 'circle') {
+        drawContext.beginPath();
+        drawContext.arc(shape.x, shape.y, shape.radius, 0, 2 * Math.PI);
+        if (shape.fill !== 'transparent') drawContext.fill();
+        drawContext.stroke();
+    } else if (shape.tool === 'arrow') {
+        drawContext.beginPath();
+        drawContext.moveTo(shape.x1, shape.y1);
+        drawContext.lineTo(shape.x2, shape.y2);
+        drawContext.stroke();
+        
+        const headlen = 15; 
+        const angle = Math.atan2(shape.y2 - shape.y1, shape.x2 - shape.x1);
+        drawContext.beginPath();
+        drawContext.moveTo(shape.x2, shape.y2);
+        drawContext.lineTo(shape.x2 - headlen * Math.cos(angle - Math.PI / 6), shape.y2 - headlen * Math.sin(angle - Math.PI / 6));
+        drawContext.lineTo(shape.x2 - headlen * Math.cos(angle + Math.PI / 6), shape.y2 - headlen * Math.sin(angle + Math.PI / 6));
+        drawContext.lineTo(shape.x2, shape.y2);
+        drawContext.fillStyle = shape.color;
+        drawContext.fill();
+    } else if (shape.tool === 'path') {
+        if (!shape.points || shape.points.length === 0) return;
+        
+        drawContext.beginPath();
+        drawContext.moveTo(shape.points[0].x, shape.points[0].y);
+        for (let i = 1; i < shape.points.length; i++) {
+            drawContext.lineTo(shape.points[i].x, shape.points[i].y);
+        }
+        if (shape.previewX !== undefined && shape.previewY !== undefined) {
+            drawContext.lineTo(shape.previewX, shape.previewY);
+        }
+        drawContext.stroke();
+
+        const drawArrowHead = (x1, y1, x2, y2) => {
+            const headlen = 15; 
+            const angle = Math.atan2(y2 - y1, x2 - x1);
+            drawContext.beginPath();
+            drawContext.moveTo(x2, y2);
+            drawContext.lineTo(x2 - headlen * Math.cos(angle - Math.PI / 6), y2 - headlen * Math.sin(angle - Math.PI / 6));
+            drawContext.lineTo(x2 - headlen * Math.cos(angle + Math.PI / 6), y2 - headlen * Math.sin(angle + Math.PI / 6));
+            drawContext.lineTo(x2, y2);
+            drawContext.fillStyle = shape.color;
+            drawContext.fill();
+        };
+
+        for (let i = 0; i < shape.points.length - 1; i++) {
+            drawArrowHead(shape.points[i].x, shape.points[i].y, shape.points[i+1].x, shape.points[i+1].y);
+        }
+        if (shape.previewX !== undefined && shape.previewY !== undefined && shape.points.length > 0) {
+            const lastPt = shape.points[shape.points.length - 1];
+            drawArrowHead(lastPt.x, lastPt.y, shape.previewX, shape.previewY);
+        }
+    } else if (shape.tool === 'text') {
+        drawContext.font = "bold 20px 'Open Sans', sans-serif";
+        drawContext.fillStyle = shape.color;
+        drawContext.fillText(shape.text, shape.x, shape.y);
+    }
+
+    if (shape.label && shape.tool !== 'text') {
+        drawContext.font = "bold 14px 'Open Sans', sans-serif";
+        const bb = getBoundingBox(shape);
+        const lx = Math.max(0, bb.x);
+        const ly = Math.max(15, bb.y - 8);
+
+        drawContext.lineWidth = 3;
+        drawContext.strokeStyle = 'white';
+        drawContext.strokeText(shape.label, lx, ly);
+        
+        drawContext.fillStyle = shape.color;
+        drawContext.fillText(shape.label, lx, ly);
+    }
+}
+
+function redrawAll() {
+    const canvas = document.getElementById('draw-canvas');
+    if (!canvas) return;
+    drawContext.clearRect(0, 0, canvas.width, canvas.height);
+    if (legacyImage) {
+        drawContext.drawImage(legacyImage, 0, 0, canvas.width, canvas.height);
+    }
+    const objects = dbDesc.models[dbDesc.activeView].drawingObjects || [];
+    objects.forEach((shape, index) => {
+        drawShape(shape);
+        if (isDrawingMode && drawTool === 'move' && selectedShapeIndex === index) {
+            const bb = getBoundingBox(shape);
+            drawContext.strokeStyle = 'rgba(0,0,0,0.5)';
+            drawContext.lineWidth = 1;
+            drawContext.setLineDash([5, 5]);
+            drawContext.strokeRect(bb.x, bb.y, bb.w, bb.h);
+            drawContext.setLineDash([]);
+        }
+    });
+}
+
+function attachDrawingEvents() {
+    const canvas = document.getElementById('draw-canvas');
+    if (!canvas) return;
+    
+    const getPos = (e) => {
+        const rect = canvas.getBoundingClientRect();
+        if (e.touches && e.touches.length > 0) {
+            return { x: e.touches[0].clientX - rect.left, y: e.touches[0].clientY - rect.top };
+        }
+        return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    };
+
+    const startDraw = (e) => {
+        if (!isDrawingMode || isEditingText) return;
+        isDrawing = true;
+        const pos = getPos(e);
+        lastX = pos.x;
+        lastY = pos.y;
+        
+         if (drawTool === 'move') {
+            const objects = dbDesc.models[dbDesc.activeView].drawingObjects || [];
+            selectedShapeIndex = -1;
+            for (let i = objects.length - 1; i >= 0; i--) {
+                if (hitTest(pos.x, pos.y, objects[i])) {
+                    selectedShapeIndex = i;
+                    break;
+                }
+            }
+            redrawAll();
+            if (selectedShapeIndex !== -1) {
+                isDrawing = true;
+                dragStartX = pos.x;
+                dragStartY = pos.y;
+            }
+            return;
+        }
+
+        if (drawTool === 'path') {
+            if (!isDrawingPath) {
+                isDrawingPath = true;
+                pathPoints = [{x: pos.x, y: pos.y}];
+                currentShape = { tool: 'path', type: drawType, color: drawColor, points: [...pathPoints] };
+            } else {
+                pathPoints.push({x: pos.x, y: pos.y});
+                currentShape.points = [...pathPoints];
+            }
+            redrawAll();
+            drawShape({...currentShape, previewX: pos.x, previewY: pos.y});
+            return;
+        }
+
+        isDrawing = true;
+
+        if (drawTool === 'text') {
+            openInlineEditor(pos.x, pos.y, '', (newText) => {
+                if (newText) {
+                    if (!dbDesc.models[dbDesc.activeView].drawingObjects) dbDesc.models[dbDesc.activeView].drawingObjects = [];
+                    dbDesc.models[dbDesc.activeView].drawingObjects.push({ tool: 'text', color: drawColor, text: newText, x: pos.x, y: pos.y + 7 });
+                    redrawAll();
+                    saveDrawing();
+                }
+            });
+            isDrawing = false;
+        } else if (drawTool === 'pen') {
+            currentShape = { tool: 'pen', type: drawType, color: drawColor, points: [{x: pos.x, y: pos.y}] };
+        } else if (drawTool === 'rect') {
+            currentShape = { tool: 'rect', type: drawType, color: drawColor, fill: 'transparent', x: pos.x, y: pos.y, w: 0, h: 0 };
+        } else if (drawTool === 'circle') {
+            currentShape = { tool: 'circle', type: drawType, color: drawColor, fill: 'transparent', x: pos.x, y: pos.y, radius: 0 };
+        } else if (drawTool === 'arrow') {
+            currentShape = { tool: 'arrow', type: drawType, color: drawColor, x1: pos.x, y1: pos.y, x2: pos.x, y2: pos.y };
+        }
+    };
+
+    const draw = (e) => {
+        if (!isDrawing || !isDrawingMode) return;
+        if (e.cancelable && e.type !== 'mousemove') e.preventDefault(); 
+        const pos = getPos(e);
+
+        if (drawTool === 'move') {
+            if (selectedShapeIndex !== -1) {
+                const dx = pos.x - dragStartX;
+                const dy = pos.y - dragStartY;
+                moveShape(dbDesc.models[dbDesc.activeView].drawingObjects[selectedShapeIndex], dx, dy);
+                dragStartX = pos.x;
+                dragStartY = pos.y;
+                redrawAll();
+            }
+            return;
+        }
+
+        if (drawTool === 'path') {
+            if (isDrawingPath && currentShape) {
+                redrawAll();
+                drawShape({...currentShape, previewX: pos.x, previewY: pos.y});
+            }
+            return;
+        }
+
+        if (drawTool === 'pen') {
+            currentShape.points.push({x: pos.x, y: pos.y});
+        } else if (drawTool === 'rect') {
+            currentShape.w = pos.x - lastX;
+            currentShape.h = pos.y - lastY;
+        } else if (drawTool === 'circle') {
+            currentShape.radius = Math.sqrt(Math.pow(pos.x - lastX, 2) + Math.pow(pos.y - lastY, 2));
+        } else if (drawTool === 'arrow') {
+            currentShape.x2 = pos.x;
+            currentShape.y2 = pos.y;
+        }
+
+        redrawAll();
+        if (currentShape) drawShape(currentShape);
+    };
+
+    const endDraw = () => {
+        if (drawTool === 'path') return; // Percurso termina no Esc ou Clicando Direito
+
+        if (isDrawing && !isEditingText) {
+            isDrawing = false;
+            if (drawTool === 'move') {
+                saveDrawing();
+                return;
+            }
+            if (currentShape) {
+                if (!dbDesc.models[dbDesc.activeView].drawingObjects) {
+                    dbDesc.models[dbDesc.activeView].drawingObjects = [];
+                }
+                
+                const shapeToSave = currentShape;
+                dbDesc.models[dbDesc.activeView].drawingObjects.push(shapeToSave);
+                currentShape = null;
+                redrawAll();
+                saveDrawing();
+
+                if (shapeToSave.tool !== 'text') {
+                    const bb = getBoundingBox(shapeToSave);
+                    const lx = Math.max(10, bb.x + (bb.w / 2) - 50);
+                    const ly = Math.max(10, bb.y + bb.h + 10);
+                    openInlineEditor(lx, ly, '', (newLabel) => {
+                        if (newLabel && newLabel !== '') {
+                            shapeToSave.label = newLabel;
+                            redrawAll();
+                            saveDrawing();
+                        }
+                    });
+                }
+            }
+        }
+    };
+
+    canvas.addEventListener('mousedown', startDraw);
+    canvas.addEventListener('mousemove', draw);
+    canvas.addEventListener('mouseup', endDraw);
+    canvas.addEventListener('mouseout', endDraw);
+    
+    canvas.addEventListener('contextmenu', (e) => {
+        if (isDrawingMode && drawTool === 'path' && isDrawingPath) {
+            e.preventDefault();
+            finishPath();
+        }
+    });
+
+    canvas.addEventListener('touchstart', startDraw, { passive: false });
+    canvas.addEventListener('touchmove', draw, { passive: false });
+    canvas.addEventListener('touchend', endDraw);
+    
+    window.addEventListener('resize', () => {
+        if (dbDesc.models[dbDesc.activeView].image) {
+            setupCanvas();
+        }
+    });
+}
+
+function setupCanvas() {
+    const canvas = document.getElementById('draw-canvas');
+    const wrapper = document.getElementById('img-wrapper');
+    
+    if (!wrapper || wrapper.clientWidth === 0) return;
+    
+    canvas.width = wrapper.clientWidth;
+    canvas.height = wrapper.clientHeight;
+
+    drawContext = canvas.getContext('2d');
+    drawContext.lineCap = 'round';
+    drawContext.lineJoin = 'round';
+    drawContext.lineWidth = 4;
+    
+    const legacySrc = dbDesc.models[dbDesc.activeView].legacyDrawing;
+    if (legacySrc) {
+        legacyImage = new Image();
+        legacyImage.onload = () => {
+            redrawAll();
+        };
+        legacyImage.src = legacySrc;
+    } else {
+        legacyImage = null;
+        redrawAll();
+    }
+}
+
+function toggleDrawingMode() {
+    isDrawingMode = !isDrawingMode;
+    const canvas = document.getElementById('draw-canvas');
+    const toolbar = document.getElementById('draw-toolbar');
+    const btnDraw = document.getElementById('btn-draw');
+
+    if (isDrawingMode) {
+        canvas.style.pointerEvents = 'auto';
+        canvas.style.cursor = 'crosshair';
+        toolbar.style.display = 'flex';
+        btnDraw.style.display = 'none';
+        setupCanvas();
+    } else {
+        canvas.style.pointerEvents = 'none';
+        canvas.style.cursor = 'default';
+        toolbar.style.display = 'none';
+        btnDraw.style.display = 'inline-block';
+    }
+}
+
+function clearDrawings() {
+    if (confirm("Tem certeza que deseja apagar todas as marcações?")) {
+        dbDesc.models[dbDesc.activeView].drawingObjects = [];
+        dbDesc.models[dbDesc.activeView].drawings = '';
+        dbDesc.models[dbDesc.activeView].legacyDrawing = '';
+        legacyImage = null;
+        redrawAll();
+        saveDrawing();
+    }
+}
+
+function saveDrawing() {
+    const canvas = document.getElementById('draw-canvas');
+    dbDesc.models[dbDesc.activeView].drawings = canvas.toDataURL('image/png');
+    saveDesc();
+    checkDiagramAlerts();
+}
+
+function setDrawTool(tool, btn) {
+    if (drawTool === 'path' && isDrawingPath && tool !== 'path') {
+        finishPath();
+    }
+
+    drawTool = tool;
+    if (tool !== 'move') {
+        selectedShapeIndex = -1;
+        redrawAll();
+    }
+    document.querySelectorAll('#draw-toolbar .active-tool').forEach(b => {
+        b.classList.remove('active-tool');
+        b.style.border = '';
+    });
+    if(btn) {
+        btn.classList.add('active-tool');
+        btn.style.border = '2px solid #0f172a';
+    }
+
+    if (tool === 'path') {
+        showToast("Clique para adicionar pontos ao percurso. Pressione 'Esc' ou 'Botão Direito' para finalizar.", "info");
+    }
+}
+
+function setDrawType(type, color, btn) {
+    drawType = type;
+    drawColor = color;
+    document.querySelectorAll('#draw-toolbar .color-btn').forEach(b => {
+        b.classList.remove('active-color');
+        b.style.border = '';
+    });
+    if(btn) {
+        btn.classList.add('active-color');
+        btn.style.border = '2px solid #0f172a';
+    }
+    if (drawTool === 'move' && selectedShapeIndex !== -1) {
+        const shape = dbDesc.models[dbDesc.activeView].drawingObjects[selectedShapeIndex];
+        shape.color = color;
+        shape.type = type;
+        redrawAll();
+        saveDrawing();
     }
 }
