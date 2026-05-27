@@ -11,6 +11,14 @@ const quill = new Quill('#editor-container', {
         ['link', 'image', 'video', 'formula', 'clean']
     ]}
 });
+const quillResources = new Quill('#resources-editor-container', {
+    theme: 'snow',
+    modules: { toolbar: [
+        ['bold', 'italic', 'underline'],
+        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+        ['link', 'clean']
+    ]}
+});
 
 const categories = { 'Capacitação': 'var(--color-capacitacao)', 'Gestão da Mudança': 'var(--color-mudanca)', 'Tecnologia': 'var(--color-tecnologia)', 'Implantação': 'var(--color-implantacao)', 'Definição de Riscos': 'var(--color-riscos)', 'Tratamento de Riscos': 'var(--color-riscos)', 'Metas e Indicadores': 'var(--color-metas)' };
 
@@ -346,7 +354,7 @@ function handleCategoryChange() {
 }
 
 function openNewForm() { resetForm(); document.getElementById('formTitle').innerText = 'Nova Ação'; document.getElementById('formContainer').style.display = 'block'; window.scrollTo(0,0); handleCategoryChange(); }
-function resetForm() { document.getElementById('formContainer').style.display = 'none'; document.getElementById('pdrimForm').reset(); document.getElementById('editId').value = ''; quill.setContents([]); const indicatorList = document.getElementById('indicator-list'); if (indicatorList) indicatorList.innerHTML = ''; handleCategoryChange(); render(); }
+function resetForm() { document.getElementById('formContainer').style.display = 'none'; document.getElementById('pdrimForm').reset(); document.getElementById('editId').value = ''; quill.setContents([]); quillResources.setContents([]); const indicatorList = document.getElementById('indicator-list'); if (indicatorList) indicatorList.innerHTML = ''; handleCategoryChange(); render(); }
 
 function openNewFormWithCategory(cat) {
     openNewForm();
@@ -378,6 +386,7 @@ function editAction(id) {
     document.getElementById('start').value = startAction ? startAction.date : '';
     document.getElementById('end').value = endAction ? endAction.date : (startAction ? startAction.date : '');
     quill.root.innerHTML = action.desc;
+    quillResources.root.innerHTML = action.resources || '';
     document.getElementById('formTitle').innerText = 'Editar Ação';
     document.getElementById('formContainer').style.display = 'block';
     window.scrollTo(0,0);
@@ -411,7 +420,7 @@ document.getElementById('pdrimForm').addEventListener('submit', function(e) {
         });
     }
 
-    const common = { id: editId ? parseInt(editId) : Date.now(), title: document.getElementById('title').value, cat: document.getElementById('cat').value, desc: quill.root.innerHTML, status: 'pendente', linkedItem: linkedItem, indicatorData: indicatorData };
+    const common = { id: editId ? parseInt(editId) : Date.now(), title: document.getElementById('title').value, cat: document.getElementById('cat').value, desc: quill.root.innerHTML, resources: quillResources.root.innerHTML, status: 'pendente', linkedItem: linkedItem, indicatorData: indicatorData };
     if(editId) flatActions = flatActions.filter(a => a.id != editId);
     const s = document.getElementById('start').value;
     const en = document.getElementById('end').value;
@@ -776,6 +785,7 @@ function renderTimeline(data) {
                             <span class="cat-badge" style="background: rgba(255,255,255,0.6);">${ev.cat}</span>
                         </div>
                         <div class="card-content">${ev.desc}</div>
+                        ${ev.resources && ev.resources !== '<p><br></p>' ? `<div style="margin-top: 15px; padding-top: 10px; border-top: 1px dashed #cbd5e1;"><b style="font-size:0.8rem; color: var(--dark-accent);">Recursos Necessários:</b><div class="card-content">${ev.resources}</div></div>` : ''}
                     </div>
                     <div class="timeline-text-view hover-trigger" id="text-view-${index}" style="display: ${timelineExpandedAll ? 'none' : 'flex'}; align-items: center; gap: 8px; width: 100%; position: relative;">
                         <span class="cat-badge" style="background: ${categories[ev.cat]}; flex-shrink: 0;">${ev.cat}</span>
