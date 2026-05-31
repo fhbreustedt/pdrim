@@ -533,7 +533,9 @@ function renderCards(data) {
     root.style.display = 'grid';
     root.style.gridTemplateColumns = 'repeat(auto-fit, minmax(300px, 1fr))';
 
-    if (data.length === 0 && Object.keys(dbImp.instances || {}).length === 0) {
+    const activeInstances = Object.keys(dbImp.instances || {}).filter(instId => dbImp.logs.some(l => l.instanceId === instId));
+
+    if (data.length === 0 && activeInstances.length === 0) {
         root.innerHTML = '<div class="empty-state" style="grid-column: 1 / -1;">Sem logs cadastrados.</div>';
         return;
     }
@@ -605,7 +607,7 @@ function renderCards(data) {
 
     // 2. ATIVIDADES DE PROCESSO
     if (filterType === 'all' || filterType === 'atividade') {
-        const instances = Object.keys(dbImp.instances || {});
+        const instances = activeInstances;
         const avulsas = data.filter(l => l.type === 'atividade' && !l.instanceId);
         let content = '';
 
@@ -651,9 +653,26 @@ function renderCards(data) {
                     }
                 }
                 
-                const isDeletingThis = selectedForDeletion.includes('inst_' + instId);
+                let isDeletingThis = selectedForDeletion.includes('inst_' + instId);
+                let partialDelete = false;
+
+                const logsToDelete = instLogs.filter(l => selectedForDeletion.includes(l.id));
+                if (logsToDelete.length > 0) {
+                    if (logsToDelete.length === instLogs.length) {
+                        isDeletingThis = true;
+                    } else {
+                        partialDelete = true;
+                    }
+                }
                 const checkedAttr = isDeletingThis ? 'checked' : '';
                 const deleteClass = isDeletingThis ? 'deleting-card' : '';
+
+                let passosHtml = `<span>${checked}/${totalSteps} passos</span>`;
+                if (partialDelete) {
+                    passosHtml = `<span style="color: #ef4444; font-weight: bold;">⚠️ ${logsToDelete.length} tarefa(s) na lixeira | ${checked}/${totalSteps} passos</span>`;
+                } else if (isDeletingThis && logsToDelete.length > 0 && !selectedForDeletion.includes('inst_' + instId)) {
+                    passosHtml = `<span style="color: #ef4444; font-weight: bold;">⚠️ Exclusão total pendente</span>`;
+                }
 
                 content += `
                     <div class="log-card atividade hover-trigger ${deleteClass}" id="inst-card-${instId}" style="padding: 10px 12px; gap: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.03);">
@@ -671,7 +690,7 @@ function renderCards(data) {
                                 <div style="background: #22c55e; height: 100%; width: ${pct}%;"></div>
                         </div>
                         <div style="display: flex; justify-content: space-between; font-size: 0.65rem; color: #64748b; margin-bottom: 6px;">
-                            <span>${checked}/${totalSteps} passos</span>
+                            ${passosHtml}
                             <span>⏱️ ${timeStr}</span>
                         </div>
                         <span class="action-link no-print" style="font-size: 0.7rem; display: block;" onclick="openInstanceProgress('${instId}')">Acompanhar POP &rarr;</span>
@@ -1497,6 +1516,25 @@ function handleCheckboxChange(cb) {
     const id = isInst ? cb.value : parseInt(cb.value); 
     const isChecked = cb.checked; 
     if (isChecked && !selectedForDeletion.includes(id)) { selectedForDeletion.push(id); } else if (!isChecked) { selectedForDeletion = selectedForDeletion.filter(x => x !== id); } 
+    
+    if (isInst) {
+        const instId = cb.value.replace('inst_', '');
+        dbImp.logs.filter(l => l.instanceId === instId).forEach(l => {
+            if (isChecked && !selectedForDeletion.includes(l.id)) selectedForDeletion.push(l.id);
+            else if (!isChecked) selectedForDeletion = selectedForDeletion.filter(x => x !== l.id);
+            
+            document.querySelectorAll(`.delete-checkbox[value="${l.id}"]`).forEach(input => { 
+                input.checked = isChecked; 
+                const cardItem = input.closest('.log-card'); 
+                if (cardItem) cardItem.classList.toggle('deleting-card', isChecked); 
+                const tmItem = input.closest('.tm-item'); 
+                if (tmItem) tmItem.classList.toggle('deleting-tm-item', isChecked); 
+            }); 
+            const row = document.getElementById(`row-${l.id}`); 
+            if (row) row.classList.toggle('deleting-table-row', isChecked);
+        });
+    }
+
     document.querySelectorAll(`.delete-checkbox[value="${cb.value}"]`).forEach(input => { 
         input.checked = isChecked; 
         const cardItem = input.closest('.log-card'); 

@@ -1047,6 +1047,6 @@ function printPage() {
 }
 
 function save() { localStorage.setItem('pdrim_rac_v10_9', JSON.stringify(flatActions)); localStorage.setItem('pdrim_exported', 'false'); updateBreadcrumbs(); }
-function exportJSON() { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(flatActions)], {type: "application/json"})); a.download = "pdrim_racionalizar.json"; a.click(); localStorage.setItem('pdrim_exported', 'true'); showToast("Arquivo exportado com sucesso!", "success"); }
+function exportJSON() { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(flatActions)], {type: "application/json"})); a.download = `pdrim_racionalizar_${new Date().toISOString().slice(0, 10)}.json`; a.click(); localStorage.setItem('pdrim_exported', 'true'); showToast("Arquivo exportado com sucesso!", "success"); }
 
 initUI(); render();
