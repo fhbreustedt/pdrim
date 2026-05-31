@@ -17,11 +17,14 @@ let descActivities = [];
 let descRisks = [];
 
 let currentView = 'cards';
-let currentSortCol = 'date';
+let currentSortCol = 'startDate';
 let currentSortDir = 'desc';
 let selectedForDeletion = [];
 let timelineExpandedAll = false;
 let currentMitigations = [];
+let currentCategoryView = null;
+let currentRiskHistoryId = null;
+let outOfOrderAcoesIds = new Set();
 
 document.addEventListener('DOMContentLoaded', () => {
     initUI();
@@ -143,8 +146,22 @@ function getRefName(type, refId) {
     return '';
 }
 
+window.openNewLogModal = function() {
+    document.getElementById('newLogModalOverlay').style.display = 'flex';
+};
+
+window.closeNewLogModal = function() {
+    document.getElementById('newLogModalOverlay').style.display = 'none';
+};
+
+window.backToNewLogModal = function() {
+    closeLogForm();
+    openNewLogModal();
+};
+
 function openLogForm(type, logId = null) {
-    const formContainer = document.getElementById('formContainer');
+    closeNewLogModal();
+    const formContainer = document.getElementById('logFormContainer');
     const formTitle = document.getElementById('formTitle');
     const logTypeInput = document.getElementById('logType');
     const logRefSelect = document.getElementById('logRef');
@@ -192,6 +209,7 @@ function openLogForm(type, logId = null) {
         });
     }
     
+    const btnBack = document.getElementById('btn-back-new-log');
     if (logId) {
         const log = dbImp.logs.find(l => l.id == logId);
         if (log) {
@@ -204,9 +222,10 @@ function openLogForm(type, logId = null) {
             document.getElementById('logInstanceId').value = log.instanceId || '';
             document.getElementById('logResponsible').value = log.responsible || '';
             currentMitigations = log.mitigations ? JSON.parse(JSON.stringify(log.mitigations)) : [];
-            quill.root.innerHTML = log.desc;
-            if (log.desc && log.desc !== '<p><br></p>') document.getElementById('editor-wrapper').style.display = 'block';
+            quill.root.innerHTML = log.desc || '';
+            if (log.desc && log.desc !== '<p><br></p>') document.getElementById('editor-wrapper').style.display = 'flex';
         }
+        if (btnBack) btnBack.style.display = 'none';
     } else {
         formTitle.innerText = `Novo Registro: ${getTypeName(type)}`;
         document.getElementById('logId').value = '';
@@ -217,22 +236,12 @@ function openLogForm(type, logId = null) {
         document.getElementById('newMitigationEnd').value = '';
         currentMitigations = [];
         quill.setContents([]);
+        if (btnBack) btnBack.style.display = 'inline-block';
     }
     
     renderMitigationList();
-    formContainer.style.display = 'block';
-    window.scrollTo({ top: formContainer.offsetTop - 20, behavior: 'smooth' });
+    document.getElementById('formModalOverlay').style.display = 'flex';
 }
-window.skipInstanceStep = function(stepId) {
-    const inst = dbImp.instances[currentInstanceId];
-    if (!inst.stepLogs) inst.stepLogs = {};
-    if (!inst.stepLogs[stepId]) inst.stepLogs[stepId] = {};
-    inst.stepLogs[stepId].end = new Date().toISOString();
-    inst.stepLogs[stepId].status = 'na';
-    if (!inst.checkedSteps) inst.checkedSteps = [];
-    if (!inst.checkedSteps.includes(stepId)) inst.checkedSteps.push(stepId);
-    saveLogs(); renderInstancePop(); renderLogs();
-};
 
 function onLogRefChange() {
     const refId = document.getElementById('logRef').value;
@@ -250,7 +259,7 @@ function onLogRefChange() {
 function toggleObservation() {
     const wrap = document.getElementById('editor-wrapper');
     const isHidden = wrap.style.display === 'none';
-    wrap.style.display = isHidden ? 'block' : 'none';
+    wrap.style.display = isHidden ? 'flex' : 'none';
     if (isHidden) quill.focus();
 }
 
@@ -310,7 +319,7 @@ function removeMitigationAction(index) {
 }
 
 function closeLogForm() {
-    document.getElementById('formContainer').style.display = 'none';
+    document.getElementById('formModalOverlay').style.display = 'none';
     document.getElementById('logId').value = '';
     quill.setContents([]);
     renderLogs();
@@ -386,7 +395,51 @@ function saveLogs() {
     updateBreadcrumbs();
 }
 
+function getUniqueRacActions() {
+    const actionsMap = new Map();
+    racData.forEach(action => {
+        if (!actionsMap.has(action.id)) {
+            const allForId = racData.filter(a => a.id === action.id);
+            const startAction = allForId.find(a => a.label === 'Início' || a.label === 'Evento Único') || allForId[0];
+            actionsMap.set(action.id, {
+                ...action,
+                startDate: startAction.date || startAction.startDate
+            });
+        }
+    });
+    return Array.from(actionsMap.values()).sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
+}
+
+function updateOutOfOrderAcoes() {
+    const uniqueRac = getUniqueRacActions();
+    const plannedItems = uniqueRac.map(r => {
+        const log = dbImp.logs.find(l => l.type === 'acao' && l.refId == r.id);
+        let startTime = null;
+        if (log && (log.startDate || log.date)) {
+            startTime = new Date(log.startDate || log.date).getTime();
+        }
+        return { logId: log ? log.id : null, startTime: startTime };
+    });
+    
+    outOfOrderAcoesIds = new Set();
+    for (let i = 0; i < plannedItems.length; i++) {
+        for (let j = i + 1; j < plannedItems.length; j++) {
+            const a = plannedItems[i];
+            const b = plannedItems[j];
+            if (b.startTime !== null) {
+                if (a.startTime === null) {
+                    outOfOrderAcoesIds.add(b.logId);
+                } else if (a.startTime > b.startTime) {
+                    if (a.logId) outOfOrderAcoesIds.add(a.logId);
+                    outOfOrderAcoesIds.add(b.logId);
+                }
+            }
+        }
+    }
+}
+
 function renderLogs() {
+    updateOutOfOrderAcoes();
     const filterType = document.getElementById('filterType').value;
     let filtered = dbImp.logs.filter(l => filterType === 'all' || l.type === filterType);
     
@@ -395,7 +448,15 @@ function renderLogs() {
         switch(currentSortCol) {
             case 'title': valA = a.title.toLowerCase(); valB = b.title.toLowerCase(); break;
             case 'type': valA = a.type.toLowerCase(); valB = b.type.toLowerCase(); break;
-            case 'date': default: valA = new Date(a.startDate || a.date).getTime(); valB = new Date(b.startDate || b.date).getTime(); break;
+            case 'ref': 
+                valA = (getRefName(a.type, a.refId) + ' ' + (a.instanceId || '')).toLowerCase(); 
+                valB = (getRefName(b.type, b.refId) + ' ' + (b.instanceId || '')).toLowerCase(); 
+                break;
+            case 'endDate': 
+                valA = a.endDate ? new Date(a.endDate).getTime() : 0; 
+                valB = b.endDate ? new Date(b.endDate).getTime() : 0; 
+                break;
+            case 'startDate': default: valA = new Date(a.startDate || a.date).getTime(); valB = new Date(b.startDate || b.date).getTime(); break;
         }
         if (valA < valB) return currentSortDir === 'asc' ? -1 : 1;
         if (valA > valB) return currentSortDir === 'asc' ? 1 : -1;
@@ -413,7 +474,55 @@ function renderLogs() {
     if (currentView === 'cards') renderCards(filtered);
     else if (currentView === 'timeline') renderTimeline(filtered);
     else renderTable(filtered);
+    
+    if (currentCategoryView) renderCategoryModal();
+    if (currentInstanceId) renderInstancePop();
+    if (currentRiskHistoryId) window.openRiskHistory(currentRiskHistoryId);
 }
+
+window.buildMergedActsForInstance = function(instId) {
+    const inst = dbImp.instances[instId];
+    if (!inst) return [];
+
+    let mergedActs = [];
+    const baseActs = JSON.parse(JSON.stringify(descActivities));
+    
+    baseActs.forEach(baseAct => {
+        const logsForThisAct = dbImp.logs.filter(l => l.type === 'atividade' && l.instanceId === instId && l.refId === baseAct.id);
+        
+        if (logsForThisAct.length > 0) {
+            logsForThisAct.sort((a, b) => a.id - b.id);
+            logsForThisAct.forEach((log, index) => {
+                let duplicateAct = JSON.parse(JSON.stringify(baseAct));
+                if (index > 0) {
+                    duplicateAct.id = duplicateAct.id + '_dup_' + log.id;
+                    duplicateAct.isDuplicate = true;
+                    duplicateAct.isLatestDuplicate = (index === logsForThisAct.length - 1);
+                    if (duplicateAct.steps) {
+                        duplicateAct.steps.forEach(s => {
+                            s.id = s.id + '_dup_' + log.id;
+                        });
+                    }
+                } else if (logsForThisAct.length > 1) {
+                    duplicateAct.isDuplicate = true;
+                    duplicateAct.isLatestDuplicate = false;
+                }
+                duplicateAct.logId = log.id;
+                mergedActs.push(duplicateAct);
+            });
+        } else {
+            mergedActs.push(baseAct);
+        }
+    });
+
+    const unforeseenLogs = dbImp.logs.filter(l => l.type === 'atividade' && l.instanceId === instId && !l.refId);
+    unforeseenLogs.forEach(ulog => {
+        mergedActs.push({ id: 'unforeseen_' + ulog.id, name: '🌟 Extra: ' + ulog.title, isCustom: true, logId: ulog.id, steps: [{ id: 'step_unf_' + ulog.id, desc: 'Acompanhar execução da atividade extra' }] });
+    });
+    mergedActs.forEach(ma => { if (!ma.steps || ma.steps.length === 0) ma.steps = [{ id: 'auto_' + ma.id, desc: 'Executar atividade principal' }]; });
+    (inst.customActs || []).forEach(ca => { let ma = mergedActs.find(a => a.id === ca.id); if (ma) ma.steps = ma.steps.concat(ca.steps); else mergedActs.push(ca); });
+    return mergedActs;
+};
 
 function renderCards(data) {
     const root = document.getElementById('cards-root');
@@ -447,13 +556,40 @@ function renderCards(data) {
                 if (!byCat[cat]) byCat[cat] = [];
                 byCat[cat].push(log);
             });
-            content += `<div style="display: flex; flex-direction: column; gap: 15px; margin-top: 10px;">`;
+            content += `<div style="display: flex; flex-direction: column; gap: 12px; margin-top: 10px;">`;
             for (let cat in byCat) {
-                content += `<div>
-                            <h4 style="font-size: 0.7rem; color: #64748b; text-transform: uppercase; margin-top: 0; margin-bottom: 6px;">${cat}</h4>
-                            <div style="display: flex; flex-direction: column; gap: 6px;">`;
-                byCat[cat].forEach(log => { content += generateMiniLogCard(log); });
-                content += `</div></div>`;
+                const catLogs = byCat[cat];
+                const totalActs = catLogs.length;
+                const completedActs = catLogs.filter(l => l.endDate).length;
+                const pct = totalActs > 0 ? Math.round((completedActs / totalActs) * 100) : 0;
+                
+                const startTimes = catLogs.map(l => new Date(l.startDate || l.date).getTime()).filter(t => !isNaN(t));
+                const minStart = startTimes.length > 0 ? new Date(Math.min(...startTimes)).toLocaleDateString('pt-BR') : '-';
+                
+                let maxEnd = 'Em andamento';
+                if (completedActs === totalActs && totalActs > 0) {
+                    const endTimes = catLogs.filter(l => l.endDate).map(l => new Date(l.endDate).getTime()).filter(t => !isNaN(t));
+                    maxEnd = endTimes.length > 0 ? new Date(Math.max(...endTimes)).toLocaleDateString('pt-BR') : minStart;
+                } else if (startTimes.length === 0) {
+                    maxEnd = 'Pendente';
+                }
+
+                content += `
+                    <div class="log-card acao hover-trigger" style="padding: 10px 12px; gap: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.03);">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <strong style="color: var(--text-main); font-size: 0.9rem;">${cat}</strong>
+                            <span style="font-size: 0.7rem; font-weight: bold; color: ${pct === 100 ? '#166534' : '#0284c7'};">${pct}%</span>
+                        </div>
+                        <div style="background: #e2e8f0; height: 4px; border-radius: 2px; overflow: hidden; margin: 4px 0;">
+                            <div style="background: ${pct === 100 ? '#22c55e' : '#3b82f6'}; height: 100%; width: ${pct}%;"></div>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; font-size: 0.65rem; color: #64748b; margin-bottom: 6px;">
+                            <span>${completedActs}/${totalActs} ações</span>
+                            <span>🗓️ Início: ${minStart} | Fim: ${maxEnd}</span>
+                        </div>
+                        <span class="action-link no-print" style="font-size: 0.7rem; display: block;" onclick="openCategoryDetails('${cat}')">Ver Ações da Categoria &rarr;</span>
+                    </div>
+                `;
             }
             content += `</div>`;
         }
@@ -481,19 +617,8 @@ function renderCards(data) {
                 
                 let totalSteps = 0;
                 let checked = 0;
-                let mergedActs = JSON.parse(JSON.stringify(descActivities));
                 
-                mergedActs.forEach(ma => {
-                    if (!ma.steps || ma.steps.length === 0) {
-                        ma.steps = [{ id: 'auto_' + ma.id, desc: 'Executar atividade principal' }];
-                    }
-                });
-
-                (inst.customActs || []).forEach(ca => {
-                    let ma = mergedActs.find(a => a.id === ca.id);
-                    if (ma) ma.steps = ma.steps.concat(ca.steps);
-                    else mergedActs.push(ca);
-                });
+                let mergedActs = buildMergedActsForInstance(instId);
                 
                 mergedActs.forEach(a => { 
                     if (a.steps) {
@@ -654,9 +779,9 @@ window.generateMiniLogCard = function(log, isRisk = false) {
             statusTag += `<span style="color: #92400e; font-weight: 700; font-size: 0.65rem;">⌛ Em andamento</span>`;
         } else {
             statusTag += `<span style="color: #475569; font-weight: 700; font-size: 0.65rem;">⏳ Pendente</span>`;
-            statusTag += `<span class="action-link no-print" style="margin-left: 6px; font-size: 0.6rem;" onclick="markStarted(${log.id})">Iniciar</span>`;
+            statusTag += `<span class="action-link no-print" style="margin-left: 6px; font-size: 0.6rem;" onclick="event.stopPropagation(); markStarted(${log.id})">Iniciar</span>`;
         }
-        statusTag += `<span class="action-link no-print" style="margin-left: 6px; font-size: 0.6rem;" onclick="markCompleted(${log.id})">Concluir</span>`;
+        statusTag += `<span class="action-link no-print" style="margin-left: 6px; font-size: 0.6rem;" onclick="event.stopPropagation(); markCompleted(${log.id})">Concluir</span>`;
     }
     
     const isDeletingThis = selectedForDeletion.includes(log.id);
@@ -671,19 +796,23 @@ window.generateMiniLogCard = function(log, isRisk = false) {
         extraInfo += `<span style="color:var(--danger);">🛡️ Mitigação: ${log.mitigation}</span>`;
     }
 
-    let riskHistoryBtn = isRisk ? `<span class="action-link no-print" style="font-size: 0.65rem; display: block; margin-top: 4px;" onclick="openRiskHistory(${log.id})">Ver Histórico &rarr;</span>` : '';
-    let instLink = log.instanceId ? `<span class="action-link" style="margin-left:4px;" onclick="openInstanceProgress('${log.instanceId}')">🔗 ${log.instanceId}</span>` : '';
+    let riskHistoryBtn = isRisk ? `<span class="action-link no-print" style="font-size: 0.65rem; display: block; margin-top: 4px;" onclick="event.stopPropagation(); openRiskHistory(${log.id})">Ver Histórico &rarr;</span>` : '';
+    let instLink = log.instanceId ? `<span class="action-link" style="margin-left:4px;" onclick="event.stopPropagation(); openInstanceProgress('${log.instanceId}')">🔗 ${log.instanceId}</span>` : '';
+
+    const isOutOfOrder = log.type === 'acao' && outOfOrderAcoesIds.has(log.id);
+    const outOfOrderStyle = isOutOfOrder ? 'border: 2px dashed #ef4444; border-left: 6px dashed #ef4444 !important;' : '';
 
     return `
-        <div class="log-card ${log.type} ${deleteClass} hover-trigger" id="log-card-${log.id}" style="padding: 10px 12px; gap: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.03);">
+        <div class="log-card ${log.type} ${deleteClass} hover-trigger" id="log-card-${log.id}" style="padding: 10px 12px; gap: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.03); ${outOfOrderStyle}">
             <div class="no-print hover-target" style="top: auto; bottom: 8px; right: 8px;">
-                <span style="cursor:pointer; color:#0284c7; font-size: 1rem; line-height: 1;" onclick="openLogForm('${log.type}', ${log.id})" title="Editar">✎</span>
-                <span style="cursor:pointer; color:#ef4444; font-size: 1rem; line-height: 1; margin-left: 8px;" onclick="deleteSingleLog(${log.id})" title="Excluir">✕</span>
+                <span style="cursor:pointer; color:#0284c7; font-size: 1rem; line-height: 1;" onclick="event.stopPropagation(); openLogForm('${log.type}', ${log.id})" title="Editar">✎</span>
+                <span style="cursor:pointer; color:#ef4444; font-size: 1rem; line-height: 1; margin-left: 8px;" onclick="event.stopPropagation(); deleteSingleLog(${log.id})" title="Excluir">✕</span>
             </div>
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
                 <div style="display: flex; align-items: center; gap: 6px;">
                     <input type="checkbox" class="delete-checkbox" value="${log.id}" onchange="handleCheckboxChange(this)" ${checkedAttr}>
                     <span style="font-size: 0.65rem; color: #94a3b8; font-weight: 600;">${dStr}</span>
+                    ${isOutOfOrder ? '<span title="Executado fora da ordem prevista" style="cursor:help; font-size:0.8rem;">⚠️</span>' : ''}
                 </div>
                 <div>${statusTag}</div>
             </div>
@@ -696,6 +825,7 @@ window.generateMiniLogCard = function(log, isRisk = false) {
 };
 
 window.openRiskHistory = function(logId) {
+    currentRiskHistoryId = logId;
     const log = dbImp.logs.find(l => l.id == logId);
     if(!log) return;
     
@@ -755,6 +885,7 @@ window.openRiskHistory = function(logId) {
 
 window.closeRiskHistoryModal = function() {
     document.getElementById('riskHistoryModal').style.display = 'none';
+    currentRiskHistoryId = null;
 }
 
 function renderTimeline(data) {
@@ -800,6 +931,9 @@ function renderTimeline(data) {
         const tmItemDeleteClass = isDeletingThis ? 'deleting-tm-item' : '';
         const cardDeleteClass = isDeletingThis ? 'deleting-card' : '';
         const refText = getRefName(log.type, log.refId);
+        
+        const isOutOfOrder = log.type === 'acao' && outOfOrderAcoesIds.has(log.id);
+        const outOfOrderStyle = isOutOfOrder ? 'border: 2px dashed #ef4444; border-left: 6px dashed #ef4444 !important;' : '';
 
         root.insertAdjacentHTML('beforeend', `
             <div class="tm-item ${tmItemDeleteClass}">
@@ -812,9 +946,9 @@ function renderTimeline(data) {
                 <div class="marker ${isBound ? (index === 0 ? 'start' : 'end') : 'mid'}"></div>
                 <div class="tm-right">
                     <div class="timeline-card-wrapper">
-                        <div class="timeline-card ${log.type} ${cardDeleteClass}" style="display: ${timelineExpandedAll ? 'block' : 'none'};" id="card-${index}">
+                        <div class="timeline-card ${log.type} ${cardDeleteClass}" style="display: ${timelineExpandedAll ? 'block' : 'none'}; ${outOfOrderStyle}" id="card-${index}">
                             <div class="card-title" style="margin-bottom: 8px; padding-right: 120px;">
-                                <span style="font-size: 1.1rem; font-weight: 800; color: var(--dark-accent);">${log.title}</span>
+                                <span style="font-size: 1.1rem; font-weight: 800; color: var(--dark-accent);">${log.title} ${isOutOfOrder ? '<span title="Executado fora da ordem prevista" style="cursor:help; font-size:1rem;">⚠️</span>' : ''}</span>
                                 <span class="no-print action-link" style="font-size:0.75rem; color: var(--accent); text-decoration: underline; cursor: pointer;" onclick="toggleCardExpansion(${index}, false)">(Ocultar detalhes)</span>
                             </div>
                             <div style="margin-bottom: 8px;"><span class="log-tag ${log.type}">${getTypeName(log.type)}</span></div>
@@ -882,12 +1016,16 @@ function renderTable(data) {
         const checkedAttr = isDeletingThis ? 'checked' : '';
         const tableRowDeleteClass = isDeletingThis ? 'deleting-table-row' : '';
         const refText = getRefName(log.type, log.refId);
+        
+        const isOutOfOrder = log.type === 'acao' && outOfOrderAcoesIds.has(log.id);
+        const outOfOrderStyle = isOutOfOrder ? 'border-top: 2px dashed #ef4444 !important; border-bottom: 2px dashed #ef4444 !important;' : '';
 
         root.insertAdjacentHTML('beforeend', `
-            <tr class="action-row hover-trigger ${tableRowDeleteClass}" id="row-${log.id}">
+            <tr class="action-row hover-trigger ${tableRowDeleteClass}" id="row-${log.id}" style="${outOfOrderStyle}">
                 <td><input type="checkbox" class="delete-checkbox" value="${log.id}" onchange="handleCheckboxChange(this)" ${checkedAttr}></td>
-                <td><div style="font-size:0.75rem;"><b>Início:</b> ${dStr}</div><div style="font-size:0.75rem; margin-top:2px;"><b>Fim:</b> ${eStr}</div><div style="margin-top:2px;">${statusTag}</div></td>
-                <td><b>${log.title}</b></td>
+                <td><div style="font-size:0.75rem;">${dStr}</div></td>
+                <td><div style="font-size:0.75rem;">${eStr}</div><div style="margin-top:2px;">${statusTag}</div></td>
+                <td><b>${log.title}</b> ${isOutOfOrder ? '<span title="Executado fora da ordem prevista" style="cursor:help; font-size:0.9rem;">⚠️</span>' : ''}</td>
                 <td><span class="log-tag ${log.type}">${getTypeName(log.type)}</span></td>
                 <td style="font-size: 0.75rem; color: #64748b;">${refText || '-'} ${instLink}</td>
                 <td class="no-print" style="position: relative; text-align: center;">
@@ -902,6 +1040,44 @@ function renderTable(data) {
     });
     updateSortHeaders();
 }
+
+/* --- GESTÃO DO MODAL DE AÇÕES DE IMPLANTAÇÃO POR CATEGORIA --- */
+window.openCategoryDetails = function(cat) {
+    currentCategoryView = cat;
+    document.getElementById('categoryModalName').innerText = cat;
+    renderCategoryModal();
+    document.getElementById('categoryModal').style.display = 'flex';
+};
+
+window.closeCategoryModal = function() {
+    document.getElementById('categoryModal').style.display = 'none';
+    currentCategoryView = null;
+};
+
+window.renderCategoryModal = function() {
+    if (!currentCategoryView) return;
+    const container = document.getElementById('categoryModalContainer');
+    const acoes = dbImp.logs.filter(l => l.type === 'acao');
+    const byCat = {};
+    acoes.forEach(log => {
+        const racItem = racData.find(a => a.id == log.refId);
+        const c = racItem ? racItem.cat : 'Avulsas';
+        if (!byCat[c]) byCat[c] = [];
+        byCat[c].push(log);
+    });
+
+    const logs = byCat[currentCategoryView] || [];
+    if (logs.length === 0) {
+        container.innerHTML = '<div class="empty-msg">Nenhuma ação cadastrada nesta categoria.</div>';
+        return;
+    }
+
+    let html = '';
+    logs.forEach(log => {
+        html += generateMiniLogCard(log);
+    });
+    container.innerHTML = html;
+};
 
 /* --- GESTÃO DO MODAL DE INSTÂNCIA DO PROCESSO (POP) --- */
 let currentInstanceId = null;
@@ -918,28 +1094,42 @@ function closeInstanceModal() {
     document.getElementById('instanceModal').style.display = 'none';
     currentInstanceId = null;
 }
-function startInstanceStep(stepId) {
+window.startInstanceStep = function(actId, stepId) {
     const inst = dbImp.instances[currentInstanceId];
     if (!inst.stepLogs) inst.stepLogs = {};
     inst.stepLogs[stepId] = { start: new Date().toISOString() };
+    syncActivityDates(actId);
     saveLogs();
     renderInstancePop();
 }
-function concludeInstanceStep(stepId) {
+window.concludeInstanceStep = function(actId, stepId) {
     const inst = dbImp.instances[currentInstanceId];
     if (!inst.stepLogs) inst.stepLogs = {};
     if (!inst.stepLogs[stepId]) inst.stepLogs[stepId] = {};
     inst.stepLogs[stepId].end = new Date().toISOString();
     if (!inst.checkedSteps) inst.checkedSteps = [];
     if (!inst.checkedSteps.includes(stepId)) inst.checkedSteps.push(stepId);
+    syncActivityDates(actId);
     saveLogs(); renderInstancePop(); renderLogs();
 }
-function resetInstanceStep(stepId) {
+window.resetInstanceStep = function(actId, stepId) {
     const inst = dbImp.instances[currentInstanceId];
     if (inst.stepLogs) delete inst.stepLogs[stepId];
     if (inst.checkedSteps) inst.checkedSteps = inst.checkedSteps.filter(id => id !== stepId);
+    syncActivityDates(actId);
     saveLogs(); renderInstancePop(); renderLogs();
 }
+window.skipInstanceStep = function(actId, stepId) {
+    const inst = dbImp.instances[currentInstanceId];
+    if (!inst.stepLogs) inst.stepLogs = {};
+    if (!inst.stepLogs[stepId]) inst.stepLogs[stepId] = {};
+    inst.stepLogs[stepId].end = new Date().toISOString();
+    inst.stepLogs[stepId].status = 'na';
+    if (!inst.checkedSteps) inst.checkedSteps = [];
+    if (!inst.checkedSteps.includes(stepId)) inst.checkedSteps.push(stepId);
+    syncActivityDates(actId);
+    saveLogs(); renderInstancePop(); renderLogs();
+};
 
 window.registerInstanceActivity = function(actId) {
     const act = descActivities.find(a => a.id === actId);
@@ -953,7 +1143,7 @@ window.registerInstanceActivity = function(actId) {
         id: Date.now(),
         type: 'atividade',
         date: defaultDate,
-        startDate: defaultDate,
+        startDate: '',
         endDate: '',
         refId: actId,
         title: act.name,
@@ -970,6 +1160,135 @@ window.registerInstanceActivity = function(actId) {
     showToast("Atividade registrada na instância!", "success");
 };
 
+window.editInstanceExtraStep = function(actId, stepId) {
+    const inst = dbImp.instances[currentInstanceId];
+    if (!inst) return;
+    let act = inst.customActs.find(a => a.id === actId);
+    if (!act) return;
+    let step = act.steps.find(s => s.id === stepId);
+    if (!step) return;
+    const newDesc = prompt("Edite a descrição do passo:", step.desc);
+    if (newDesc && newDesc.trim() !== '') {
+        step.desc = newDesc.trim();
+        saveLogs();
+        renderInstancePop();
+    }
+};
+
+window.syncActivityDates = function(actId) {
+    const inst = dbImp.instances[currentInstanceId];
+    if (!inst) return;
+
+    let mergedActs = JSON.parse(JSON.stringify(descActivities)); 
+    mergedActs = buildMergedActsForInstance(currentInstanceId);
+
+    const actObj = mergedActs.find(a => a.id === actId);
+    if (!actObj) return;
+
+    let minStart = Infinity;
+    let maxEnd = 0;
+    let allFinished = true;
+    let anyStarted = false;
+    
+    actObj.steps.forEach(s => {
+        const slog = inst.stepLogs && inst.stepLogs[s.id];
+        if (slog && slog.start) {
+            anyStarted = true;
+            minStart = Math.min(minStart, new Date(slog.start).getTime());
+        }
+        if (slog && slog.end) {
+            maxEnd = Math.max(maxEnd, new Date(slog.end).getTime());
+        } else if (inst.checkedSteps && inst.checkedSteps.includes(s.id)) {
+            // Passo verificado como N/A (Status preenchido sem duração de tempo)
+        } else {
+            allFinished = false;
+        }
+    });
+
+    let actLog = null;
+    if (actObj.logId) {
+        actLog = dbImp.logs.find(l => l.id === actObj.logId);
+    } else {
+        actLog = dbImp.logs.find(l => l.type === 'atividade' && l.instanceId === currentInstanceId && l.refId === actId);
+    }
+
+    if (actLog) {
+        if (anyStarted && minStart !== Infinity) {
+            const sd = new Date(minStart);
+            sd.setMinutes(sd.getMinutes() - sd.getTimezoneOffset());
+            actLog.startDate = sd.toISOString().slice(0, 16);
+        } else {
+            actLog.startDate = '';
+        }
+
+        if (allFinished && (anyStarted || maxEnd !== 0)) {
+            const ed = new Date(maxEnd !== 0 ? maxEnd : Date.now());
+            ed.setMinutes(ed.getMinutes() - ed.getTimezoneOffset());
+            actLog.endDate = ed.toISOString().slice(0, 16);
+        } else {
+            actLog.endDate = '';
+        }
+    }
+};
+
+window.unregisterInstanceActivity = function(actId) {
+    if (confirm("Tem certeza que deseja desfazer o registro desta atividade? Isso apagará o log e redefinirá os passos.")) {
+        const inst = dbImp.instances[currentInstanceId];
+        
+        let mergedActs = buildMergedActsForInstance(currentInstanceId);
+        const actObj = mergedActs.find(a => a.id === actId);
+        
+        let actLog = null;
+        if (actObj && actObj.logId) {
+            actLog = dbImp.logs.find(l => l.id === actObj.logId);
+        } else {
+            actLog = dbImp.logs.find(l => l.type === 'atividade' && l.instanceId === currentInstanceId && l.refId === actId);
+        }
+
+        if (actLog) dbImp.logs = dbImp.logs.filter(l => l.id !== actLog.id);
+        
+        if (actObj && actObj.steps) {
+            actObj.steps.forEach(s => {
+                if (inst.stepLogs) delete inst.stepLogs[s.id];
+                if (inst.checkedSteps) inst.checkedSteps = inst.checkedSteps.filter(id => id !== s.id);
+            });
+        }
+        
+        if (inst.customActs) {
+            inst.customActs = inst.customActs.filter(ca => ca.id !== actId);
+        }
+
+        saveLogs();
+        renderInstancePop();
+        renderLogs();
+        showToast("Registro da atividade desfeito!", "success");
+    }
+};
+
+function getActStartTime(a, inst) {
+    let startTime = null;
+    let actLog = null;
+    if (a.logId) {
+        actLog = dbImp.logs.find(l => l.id === a.logId);
+    } else {
+        actLog = dbImp.logs.find(l => l.type === 'atividade' && l.instanceId === currentInstanceId && l.refId === a.id);
+    }
+    if (actLog && actLog.startDate) {
+        startTime = new Date(actLog.startDate || actLog.date).getTime();
+    }
+    if (!startTime && a.steps) {
+        let earliest = Infinity;
+        a.steps.forEach(s => {
+            const slog = inst.stepLogs && inst.stepLogs[s.id];
+            if (slog && slog.start) {
+                earliest = Math.min(earliest, new Date(slog.start).getTime());
+            }
+        });
+        if (earliest !== Infinity) startTime = earliest;
+    }
+    return startTime;
+}
+
 function addInstanceExtraStep(actId) {
     const desc = prompt("Descreva o passo adicional:");
     if (!desc) return;
@@ -977,9 +1296,11 @@ function addInstanceExtraStep(actId) {
     if (!inst.customActs) inst.customActs = [];
     let act = inst.customActs.find(a => a.id === actId);
     if (!act) {
-        const baseAct = descActivities.find(a => a.id === actId);
+        let mergedActs = buildMergedActsForInstance(currentInstanceId);
+        const baseAct = mergedActs.find(a => a.id === actId);
+        
         if (baseAct) {
-            act = { id: baseAct.id, name: baseAct.name, etapa: baseAct.etapa, isCustom: false, steps: [] };
+            act = { id: actId, name: baseAct.name, etapa: baseAct.etapa, isCustom: baseAct.isCustom || false, steps: [] };
             inst.customActs.push(act);
         }
     }
@@ -994,47 +1315,103 @@ function renderInstancePop() {
     const inst = dbImp.instances[currentInstanceId];
     if (!inst.stepLogs) inst.stepLogs = {};
     
-    let mergedActs = JSON.parse(JSON.stringify(descActivities)); 
+    let mergedActs = buildMergedActsForInstance(currentInstanceId);
     
-    mergedActs.forEach(ma => {
-        if (!ma.steps || ma.steps.length === 0) {
-            ma.steps = [{ id: 'auto_' + ma.id, desc: 'Executar atividade principal' }];
+    let plannedItems = [];
+    mergedActs.forEach(a => {
+        if (!a.isCustom) {
+            plannedItems.push({ id: a.id, startTime: getActStartTime(a, inst) });
         }
     });
-
-    (inst.customActs || []).forEach(ca => {
-        let ma = mergedActs.find(a => a.id === ca.id);
-        if (ma) ma.steps = ma.steps.concat(ca.steps);
-        else mergedActs.push(ca);
-    });
+    
+    const outOfOrderIds = new Set();
+    for (let i = 0; i < plannedItems.length; i++) {
+        for (let j = i + 1; j < plannedItems.length; j++) {
+            const a = plannedItems[i];
+            const b = plannedItems[j];
+            if (b.startTime !== null) {
+                if (a.startTime === null) {
+                    outOfOrderIds.add(b.id);
+                } else if (a.startTime > b.startTime) {
+                    outOfOrderIds.add(a.id);
+                    outOfOrderIds.add(b.id);
+                }
+            }
+        }
+    }
+    
+    const sortOrder = document.getElementById('instanceSortOrder') ? document.getElementById('instanceSortOrder').value : 'planned';
+    if (sortOrder === 'chronological') {
+        mergedActs.sort((a, b) => {
+            const tA = getActStartTime(a, inst);
+            const tB = getActStartTime(b, inst);
+            if (tA === null && tB === null) return 0;
+            if (tA === null) return 1;
+            if (tB === null) return -1;
+            return tA - tB;
+        });
+    }
     
     let html = '<div style="display: flex; flex-direction: column; gap: 15px;">';
     mergedActs.forEach(a => {
         if (!a.steps || a.steps.length === 0) return;
         
-        const isRegistered = dbImp.logs.some(l => l.type === 'atividade' && l.instanceId === currentInstanceId && l.refId === a.id) || a.isCustom;
+        const isOutOfOrder = outOfOrderIds.has(a.id);
+        const borderStyle = isOutOfOrder ? '2px dashed #ef4444' : '1px solid var(--border-color)';
+        const warningIcon = isOutOfOrder ? '<span title="Executado fora da ordem prevista" style="cursor:help; margin-left: 6px;">⚠️</span>' : '';
+        
+        let isRegistered = false;
+        let actLog = null;
+        if (a.logId) {
+            isRegistered = true;
+            actLog = dbImp.logs.find(l => l.id === a.logId);
+        } else {
+            isRegistered = dbImp.logs.some(l => l.type === 'atividade' && l.instanceId === currentInstanceId && l.refId === a.id) || a.isCustom;
+            actLog = dbImp.logs.find(l => l.type === 'atividade' && l.instanceId === currentInstanceId && l.refId === a.id);
+        }
+        
+        let editActBtn = '';
+        if (isRegistered && actLog) {
+            editActBtn = `<button class="btn-edit-action" onclick="openLogForm('atividade', ${actLog.id})">✎ Editar Registro</button>`;
+            editActBtn += `<button class="btn-edit-action" style="background: #fee2e2; color: #991b1b; margin-left: 6px;" onclick="unregisterInstanceActivity('${a.id}')">Desfazer Registro</button>`;
+        }
+        
+        let autoIdBadge = '';
+        if (a.logId) {
+            const shortId = a.logId.toString().slice(-4);
+            autoIdBadge = `<span style="background: #e2e8f0; color: #475569; padding: 2px 6px; border-radius: 4px; font-size: 0.65rem; margin-right: 8px; font-family: monospace;">#${shortId}</span>`;
+        }
+        let duplicateBadge = '';
+        if (a.isDuplicate) {
+            const isLatest = a.isLatestDuplicate;
+            duplicateBadge = `<span style="background: ${isLatest ? '#fef08a' : '#f1f5f9'}; color: ${isLatest ? '#854d0e' : '#64748b'}; padding: 2px 6px; border-radius: 4px; font-size: 0.65rem; margin-left: 8px; border: 1px solid ${isLatest ? '#fde047' : '#e2e8f0'};">🔄 Execução Múltipla ${isLatest ? '(Mais Recente)' : ''}</span>`;
+        }
         
         if (isRegistered) {
             let actTimeInfo = '';
-            const actLog = dbImp.logs.find(l => l.type === 'atividade' && l.instanceId === currentInstanceId && l.refId === a.id);
             if (actLog) {
-                const sDt = actLog.startDate ? new Date(actLog.startDate) : new Date(actLog.date);
-                actTimeInfo += `<b>Início:</b> ${sDt.toLocaleString('pt-BR')}`;
-                if (actLog.endDate) {
-                    actTimeInfo += ` | <b>Fim:</b> ${new Date(actLog.endDate).toLocaleString('pt-BR')}`;
-                    if (actLog.startDate) actTimeInfo += ` | <b>Duração:</b> ${window.formatDuration(actLog.startDate, actLog.endDate)}`;
+                if (actLog.startDate) {
+                    const sDt = new Date(actLog.startDate);
+                    actTimeInfo += `<b>Início:</b> ${sDt.toLocaleString('pt-BR')}`;
+                    if (actLog.endDate) {
+                        actTimeInfo += ` | <b>Fim:</b> ${new Date(actLog.endDate).toLocaleString('pt-BR')}`;
+                        actTimeInfo += ` | <b>Duração:</b> ${window.formatDuration(actLog.startDate, actLog.endDate)}`;
+                    } else {
+                        actTimeInfo += ` | <b>Fim:</b> Em andamento`;
+                    }
                 } else {
-                    actTimeInfo += ` | <b>Fim:</b> Em andamento`;
+                    actTimeInfo += `<b>Status:</b> Pendente (Não iniciada)`;
                 }
             } else if (a.isCustom) {
                 actTimeInfo = `Passo Extra Adicionado`;
             }
 
-            html += `<div style="background: #f8fafc; border: 1px solid var(--border-color); border-radius: 6px; overflow: hidden;">
-                <div style="background: #e2e8f0; padding: 8px 12px; font-weight: 700; color: var(--dark-accent); display:flex; justify-content:space-between; align-items:center; flex-wrap: wrap; gap: 8px;">
-                    <span>${a.name}</span>
+            html += `<div style="background: ${a.isLatestDuplicate ? '#fffbeb' : '#f8fafc'}; border: ${borderStyle}; border-radius: 6px; overflow: hidden; ${a.isLatestDuplicate ? 'box-shadow: 0 0 0 2px #fde047;' : ''}">
+                <div style="background: ${a.isLatestDuplicate ? '#fef08a' : '#e2e8f0'}; padding: 8px 12px; font-weight: 700; color: var(--dark-accent); display:flex; justify-content:space-between; align-items:center; flex-wrap: wrap; gap: 8px;">
+                    <div style="display: flex; align-items: center;">${autoIdBadge}<span>${a.name}</span>${duplicateBadge}${warningIcon}</div>
                     <div style="display: flex; gap: 10px; align-items: center;">
-                        <span style="font-size: 0.65rem; color: #475569; font-weight: normal;">${actTimeInfo}</span>
+                        <span style="font-size: 0.65rem; color: ${a.isLatestDuplicate ? '#854d0e' : '#475569'}; font-weight: normal;">${actTimeInfo}</span>
+                        ${editActBtn}
                         <button class="btn-edit-action" onclick="addInstanceExtraStep('${a.id}')">+ Passo Extra</button>
                     </div>
                 </div><div style="padding: 10px; display: flex; flex-direction: column; gap: 8px;">`;
@@ -1043,6 +1420,11 @@ function renderInstancePop() {
                 const isChecked = !!slog.end || (inst.checkedSteps && inst.checkedSteps.includes(s.id));
                 const isStarted = !!slog.start;
                 const isNA = slog.status === 'na';
+                
+                let editStepBtn = '';
+                if (s.id.startsWith('cstep_')) {
+                    editStepBtn = `<button class="btn-edit-action" style="margin-right: 6px;" onclick="editInstanceExtraStep('${a.id}', '${s.id}')">✎ Editar Nome</button>`;
+                }
 
                 let actionHtml = '';
                 let timeInfo = '';
@@ -1057,20 +1439,25 @@ function renderInstancePop() {
                     const statusLbl = isNA ? `<span style="font-size: 0.7rem; color: #64748b; font-weight: bold;">➖ Não se Aplica</span>` : `<span style="font-size: 0.7rem; color: #166534; font-weight: bold;">✓ Concluído</span>`;
                     actionHtml = `${statusLbl}
                                   <div style="font-size: 0.65rem; color: #64748b; margin-left: 10px;">${timeInfo}</div>
-                                  <button class="btn-edit-action" style="margin-left: auto;" onclick="resetInstanceStep('${s.id}')">Desfazer</button>`;
+                                  <div style="margin-left: auto; display: flex; align-items: center;">
+                                      ${editStepBtn}
+                                      <button class="btn-edit-action" onclick="resetInstanceStep('${a.id}', '${s.id}')">Desfazer</button>
+                                  </div>`;
                 } else if (isStarted) {
                     actionHtml = `<span style="font-size: 0.7rem; color: #92400e; font-weight: bold;">⏳ Em andamento</span>
                                   <div style="font-size: 0.65rem; color: #64748b; margin-left: 10px;">${timeInfo}</div>
-                                  <div style="margin-left: auto; display: flex; gap: 6px;">
-                                      <button class="btn-edit-action" style="background: #dcfce7; color: #166534;" onclick="concludeInstanceStep('${s.id}')">Concluir</button>
-                                      <button class="btn-edit-action" style="background: #f1f5f9; color: #475569;" onclick="skipInstanceStep('${s.id}')">N/A</button>
-                                      <button class="btn-edit-action" onclick="resetInstanceStep('${s.id}')">Cancelar</button>
+                                  <div style="margin-left: auto; display: flex; gap: 6px; align-items: center;">
+                                      ${editStepBtn}
+                                      <button class="btn-edit-action" style="background: #dcfce7; color: #166534;" onclick="concludeInstanceStep('${a.id}', '${s.id}')">Concluir</button>
+                                      <button class="btn-edit-action" style="background: #f1f5f9; color: #475569;" onclick="skipInstanceStep('${a.id}', '${s.id}')">N/A</button>
+                                      <button class="btn-edit-action" onclick="resetInstanceStep('${a.id}', '${s.id}')">Cancelar</button>
                                   </div>`;
                 } else {
-                    actionHtml = `<div style="margin-left: auto; display: flex; gap: 6px;">
-                                      <button class="btn-edit-action" style="background: #fef3c7; color: #92400e;" onclick="startInstanceStep('${s.id}')">Iniciar</button>
-                                      <button class="btn-edit-action" style="background: #dcfce7; color: #166534;" onclick="concludeInstanceStep('${s.id}')">Concluir</button>
-                                      <button class="btn-edit-action" style="background: #f1f5f9; color: #475569;" onclick="skipInstanceStep('${s.id}')">N/A</button>
+                    actionHtml = `<div style="margin-left: auto; display: flex; gap: 6px; align-items: center;">
+                                      ${editStepBtn}
+                                      <button class="btn-edit-action" style="background: #fef3c7; color: #92400e;" onclick="startInstanceStep('${a.id}', '${s.id}')">Iniciar</button>
+                                      <button class="btn-edit-action" style="background: #dcfce7; color: #166534;" onclick="concludeInstanceStep('${a.id}', '${s.id}')">Concluir</button>
+                                      <button class="btn-edit-action" style="background: #f1f5f9; color: #475569;" onclick="skipInstanceStep('${a.id}', '${s.id}')">N/A</button>
                                   </div>`;
                 }
 
@@ -1081,9 +1468,9 @@ function renderInstancePop() {
             });
             html += `</div></div>`;
         } else {
-            html += `<div style="background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 6px; overflow: hidden; opacity: 0.6; transition: opacity 0.3s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.6'">
+            html += `<div style="background: #f8fafc; border: ${borderStyle}; border-radius: 6px; overflow: hidden; opacity: 0.6; transition: opacity 0.3s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.6'">
                 <div style="padding: 10px 12px; display:flex; justify-content:space-between; align-items:center;">
-                    <span style="font-weight: 600; color: #64748b; font-size: 0.9rem;">${a.name}</span>
+                    <div style="display: flex; align-items: center;"><span style="font-weight: 600; color: #64748b; font-size: 0.9rem;">${a.name}</span>${warningIcon}</div>
                     <button class="btn-main" style="padding: 4px 10px; font-size: 0.7rem; background: #e0f2fe; color: #0284c7; border: 1px solid #bae6fd;" onclick="registerInstanceActivity('${a.id}')">Registrar Atividade</button>
                 </div>
             </div>`;

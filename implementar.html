@@ -34,6 +34,7 @@
         <div class="header-controls no-print" id="non-printable-controls">
             <div class="button-group">
                 <input type="file" id="import-file" accept=".json" style="display:none" onchange="importJSON(event)">
+                <button class="btn-main" style="background: var(--dark-accent); color: white;" onclick="openNewLogModal()">+ NOVO</button>
                 <div class="dropdown">
                     <button class="btn-main btn-secondary" onclick="toggleDropdown(event)">+ AÇÕES</button>
                     <div class="dropdown-content" id="otherActionsDropdown">
@@ -46,9 +47,71 @@
             </div>
         </div>
 
-        <!-- Menu de Inserção Rápida -->
-        <div class="content-box mb-20">
-            <h2 class="section-title bordered">O que você deseja registrar?</h2>
+        <!-- Diário de Logs -->
+        <div class="content-box">
+            <div class="header-controls">
+                <h2 class="section-title bordered" style="margin-bottom: 0; border: none;">Diário de Ocorrências</h2>
+                <div class="control-group">
+                    <select id="filterType" onchange="renderLogs()">
+                        <option value="all">Todas as Categorias</option>
+                        <option value="acao">Ações de Implantação</option>
+                        <option value="atividade">Atividades do Processo</option>
+                        <option value="risco">Incidentes de Risco</option>
+                        <option value="outro">Outros Registros</option>
+                    </select>
+                </div>
+                <div class="button-group">
+                    <button id="btnDeleteToggle" class="btn-main btn-danger" onclick="toggleDeleteMode()">Excluir Múltiplos</button>
+                </div>
+                <div class="view-switcher racionalizar-switcher">
+                    <div style="display: flex;">
+                        <button id="btn-view-cards" class="view-tab active" onclick="switchView('cards')">📁 Cards</button>
+                        <button id="btn-view-timeline" class="view-tab" onclick="switchView('timeline')">⏳ Timeline</button>
+                        <button id="btn-view-table" class="view-tab" onclick="switchView('table')">📄 Tabela</button>
+                    </div>
+                    <button id="btn-toggle-all-timeline" class="btn-main" style="display:none; padding: 4px 10px; font-size: 0.7rem; height: 26px; margin-bottom: 5px;" onclick="toggleAllCardsTimeline()">Expandir Todos</button>
+                </div>
+            </div>
+            
+            <div class="bulk-actions" id="bulk-actions">
+                <button class="btn-main btn-danger" onclick="confirmBulkDelete()">Confirmar Exclusão</button>
+                <label style="display:flex; align-items:center; font-size:0.8rem; cursor:pointer;">
+                    <input type="checkbox" onchange="selectAll(this.checked)" style="margin-right:5px; width:16px; height:16px;">
+                    Selecionar Todos
+                </label>
+            </div>
+
+            <!-- Áreas de Visualização -->
+            <div id="views-container">
+                <div id="cards-view"><div id="cards-root" style="display: grid; gap: 15px;"></div></div>
+                <div id="timeline-view" style="display: none;"><div id="timeline-empty" class="empty-state" style="display:none;">Sem logs para exibir</div><div id="timeline-root"></div></div>
+                <div id="table-view" style="display: none; overflow-x: auto;"><div id="table-empty" class="empty-state" style="display:none;">Sem logs para exibir</div>
+                    <table class="actions-table" id="table-content" style="display:none;">
+                        <thead>
+                            <tr>
+                                <th class="no-print"><input type="checkbox" class="delete-checkbox delete-checkbox-header" onchange="selectAll(this.checked)" style="display:none;"></th>
+                                <th class="sortable sort-desc" data-col="startDate" onclick="sortTable('startDate')">Início <span class="sort-icon"></span></th>
+                                <th class="sortable" data-col="endDate" onclick="sortTable('endDate')">Fim <span class="sort-icon"></span></th>
+                                <th class="sortable" data-col="title" onclick="sortTable('title')">Título <span class="sort-icon"></span></th>
+                                <th class="sortable" data-col="type" onclick="sortTable('type')">Categoria <span class="sort-icon"></span></th>
+                                <th class="sortable" data-col="ref" onclick="sortTable('ref')">Referência <span class="sort-icon"></span></th>
+                                <th class="no-print">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal de Seleção de Tipo de Novo Registro -->
+    <div id="newLogModalOverlay" class="modal-overlay" style="display:none; z-index: 10005;" onclick="if(event.target===this) closeNewLogModal()">
+        <div class="modal-content" style="background: #f8fafc; border-radius: 8px; padding: 25px; position: relative; width: 800px; max-width: 95%;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h2 style="margin: 0; color: var(--dark-accent); font-size: 1.2rem;">O que você deseja registrar?</h2>
+                <button type="button" class="btn-edit-action btn-cancel-section" style="background-color: #fee2e2; color: #991b1b;" onclick="closeNewLogModal()">Cancelar</button>
+            </div>
             <div class="grid-artifacts" style="margin-top: 10px;">
                 <div class="card hover-trigger" style="border-top: 6px solid #3b82f6; cursor:pointer;" onclick="openLogForm('acao')">
                     <div style="font-size: 2rem; margin-bottom: 10px;">🚀</div>
@@ -72,12 +135,17 @@
                 </div>
             </div>
         </div>
+    </div>
 
-        <!-- Formulário Dinâmico de Log -->
-        <div id="formContainer" style="display:none; margin-bottom: 20px; background: #f8fafc; border: 2px dotted #3b82f6; border-radius: 8px; padding: 25px; position: relative;">
+    <!-- Formulário Dinâmico de Log -->
+    <div id="formModalOverlay" class="modal-overlay" style="display:none; z-index: 10005;" onclick="if(event.target===this) closeLogForm()">
+        <div id="logFormContainer" class="modal-content" style="background: #f8fafc; border: 2px dotted #3b82f6; border-radius: 8px; padding: 25px; position: relative; width: 900px; max-width: 95%;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                 <h2 id="formTitle" style="margin: 0; color: var(--dark-accent); font-size: 1.2rem;">Novo Registro</h2>
-                <button type="button" class="btn-edit-action btn-cancel-section" style="background-color: #fee2e2; color: #991b1b;" onclick="closeLogForm()">Cancelar</button>
+                <div style="display: flex; gap: 10px;">
+                    <button type="button" id="btn-back-new-log" class="btn-edit-action" style="background-color: #e2e8f0; color: #475569; display: none;" onclick="backToNewLogModal()">Voltar</button>
+                    <button type="button" class="btn-edit-action btn-cancel-section" style="background-color: #fee2e2; color: #991b1b;" onclick="closeLogForm()">Cancelar</button>
+                </div>
             </div>
             
             <form id="logForm">
@@ -153,8 +221,8 @@
                         <label style="margin: 0;">Descrição Detalhada / Evidências / Observações</label>
                         <button type="button" id="btn-toggle-obs" class="btn-edit-action" onclick="toggleObservation()">+ Adicionar Observação</button>
                     </div>
-                    <div id="editor-wrapper" style="display:none; background: #fff;">
-                        <div id="editor-container"></div>
+                    <div id="editor-wrapper" style="display:none; background: #fff; flex-direction: column; height: 300px;">
+                        <div id="editor-container" style="flex: 1;"></div>
                     </div>
                 </div>
 
@@ -163,70 +231,30 @@
                 </div>
             </form>
         </div>
+    </div>
 
-        <!-- Diário de Logs -->
-        <div class="content-box">
-            <div class="header-controls">
-                <h2 class="section-title bordered" style="margin-bottom: 0; border: none;">Diário de Ocorrências</h2>
-                <div class="control-group">
-                    <select id="filterType" onchange="renderLogs()">
-                        <option value="all">Todas as Categorias</option>
-                        <option value="acao">Ações de Implantação</option>
-                        <option value="atividade">Atividades do Processo</option>
-                        <option value="risco">Incidentes de Risco</option>
-                        <option value="outro">Outros Registros</option>
-                    </select>
-                </div>
-                <div class="button-group">
-                    <button id="btnDeleteToggle" class="btn-main btn-danger" onclick="toggleDeleteMode()">Excluir Múltiplos</button>
-                </div>
-                <div class="view-switcher racionalizar-switcher">
-                    <div style="display: flex;">
-                        <button id="btn-view-cards" class="view-tab active" onclick="switchView('cards')">📁 Cards</button>
-                        <button id="btn-view-timeline" class="view-tab" onclick="switchView('timeline')">⏳ Timeline</button>
-                        <button id="btn-view-table" class="view-tab" onclick="switchView('table')">📄 Tabela</button>
-                    </div>
-                    <button id="btn-toggle-all-timeline" class="btn-main" style="display:none; padding: 4px 10px; font-size: 0.7rem; height: 26px; margin-bottom: 5px;" onclick="toggleAllCardsTimeline()">Expandir Todos</button>
-                </div>
-            </div>
-            
-            <div class="bulk-actions" id="bulk-actions">
-                <button class="btn-main btn-danger" onclick="confirmBulkDelete()">Confirmar Exclusão</button>
-                <label style="display:flex; align-items:center; font-size:0.8rem; cursor:pointer;">
-                    <input type="checkbox" onchange="selectAll(this.checked)" style="margin-right:5px; width:16px; height:16px;">
-                    Selecionar Todos
-                </label>
-            </div>
-
-            <!-- Áreas de Visualização -->
-            <div id="views-container">
-                <div id="cards-view"><div id="cards-root" style="display: grid; gap: 15px;"></div></div>
-                <div id="timeline-view" style="display: none;"><div id="timeline-empty" class="empty-state" style="display:none;">Sem logs para exibir</div><div id="timeline-root"></div></div>
-                <div id="table-view" style="display: none; overflow-x: auto;"><div id="table-empty" class="empty-state" style="display:none;">Sem logs para exibir</div>
-                    <table class="actions-table" id="table-content" style="display:none;">
-                        <thead>
-                            <tr>
-                                <th class="no-print"><input type="checkbox" class="delete-checkbox delete-checkbox-header" onchange="selectAll(this.checked)" style="display:none;"></th>
-                                <th class="sortable sort-desc" data-col="date" onclick="sortTable('date')">Data/Hora (Início / Fim) <span class="sort-icon"></span></th>
-                                <th class="sortable" data-col="title" onclick="sortTable('title')">Título <span class="sort-icon"></span></th>
-                                <th class="sortable" data-col="type" onclick="sortTable('type')">Categoria <span class="sort-icon"></span></th>
-                                <th>Referência</th>
-                                <th class="no-print">Ações</th>
-                            </tr>
-                        </thead>
-                        <tbody id="table-body"></tbody>
-                    </table>
-                </div>
-            </div>
+    <!-- Modal de Ações por Categoria -->
+    <div id="categoryModal" class="modal-overlay" style="display:none;" onclick="if(event.target===this) closeCategoryModal()">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeCategoryModal()">✕</button>
+            <h2 style="margin-top: 0; color: var(--dark-accent); border-bottom: 2px solid var(--border-color); padding-bottom: 10px;">Ações da Categoria: <span id="categoryModalName" style="color: var(--accent);"></span></h2>
+            <div id="categoryModalContainer" style="margin-top: 20px; display: flex; flex-direction: column; gap: 10px;"></div>
         </div>
-    </main>
+    </div>
 
     <!-- Modal da Instância do Processo (POP e Andamento) -->
     <div id="instanceModal" class="modal-overlay" style="display:none;" onclick="if(event.target===this) closeInstanceModal()">
         <div class="modal-content">
             <button class="modal-close" onclick="closeInstanceModal()">✕</button>
             <h2 style="margin-top: 0; color: var(--dark-accent); border-bottom: 2px solid var(--border-color); padding-bottom: 10px;">Acompanhamento do Processo: <span id="instanceModalId" style="color: var(--accent);"></span></h2>
-            <div id="instancePopContainer" style="margin-top: 20px;"></div>
+            <div style="display: flex; gap: 10px; margin-top: 10px; margin-bottom: 15px; align-items: center;">
+                <label style="font-size: 0.8rem; font-weight: 600; color: #475569;">Ordenação:</label>
+                <select id="instanceSortOrder" onchange="renderInstancePop()" style="padding: 6px; font-size: 0.8rem; border: 1px solid var(--border-color); border-radius: 4px;">
+                    <option value="planned">Ordem Prevista no POP</option>
+                    <option value="chronological">Ordem Cronológica de Execução</option>
+                </select>
+            </div>
+            <div id="instancePopContainer" style="margin-top: 10px;"></div>
         </div>
     </div>
 
