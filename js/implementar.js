@@ -166,17 +166,23 @@ function openLogForm(type, logId = null) {
     const logTypeInput = document.getElementById('logType');
     const logRefSelect = document.getElementById('logRef');
     
-    const wrapRisk = document.getElementById('wrap-risk-fields');
+    const wrapResp = document.getElementById('wrap-responsible');
     const wrapInst = document.getElementById('wrap-instance-id');
     const mitigationWrapper = document.getElementById('mitigation-actions-wrapper');
+    const lblResponsible = document.getElementById('lblResponsible');
     
     if (type === 'risco') {
-        wrapRisk.style.display = 'grid';
         mitigationWrapper.style.display = 'block';
+        if (lblResponsible) lblResponsible.innerText = 'Responsável Principal pelo Incidente';
     } else {
-        wrapRisk.style.display = 'none';
         mitigationWrapper.style.display = 'none';
+        if (lblResponsible) {
+            if (type === 'atividade') lblResponsible.innerText = 'Setor / Responsável pela Execução';
+            else if (type === 'acao') lblResponsible.innerText = 'Responsável pela Implantação';
+            else lblResponsible.innerText = 'Responsável / Setor';
+        }
     }
+    if (wrapResp) wrapResp.style.display = 'grid';
     wrapInst.style.display = (type === 'atividade') ? 'block' : 'none';
     
     document.getElementById('editor-wrapper').style.display = 'none';
@@ -249,12 +255,19 @@ function onLogRefChange() {
     const refId = document.getElementById('logRef').value;
     const type = document.getElementById('logType').value;
     const titleInput = document.getElementById('logTitle');
-    if (refId && !titleInput.value) {
+    const respInput = document.getElementById('logResponsible');
+    if (refId) {
         let title = '';
+        let sector = '';
         if (type === 'acao') title = racData.find(a => a.id == refId)?.title;
-        else if (type === 'atividade') title = descActivities.find(a => a.id == refId)?.name;
+        else if (type === 'atividade') {
+            const act = descActivities.find(a => a.id == refId);
+            title = act?.name;
+            sector = act?.sector;
+        }
         else if (type === 'risco') title = descRisks.find(r => r.id == refId)?.desc;
-        if (title) titleInput.value = title;
+        if (title && !titleInput.value) titleInput.value = title;
+        if (sector && !respInput.value) respInput.value = sector;
     }
 }
 
@@ -1170,7 +1183,7 @@ window.registerInstanceActivity = function(actId) {
         refId: actId,
         title: act.name,
         instanceId: currentInstanceId,
-        responsible: '',
+        responsible: act.sector || '',
         mitigations: [],
         desc: ''
     };

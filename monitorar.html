@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDRIM - Monitorar</title>
+    <link href="https://fonts.googleapis.com/css2?family=Segoe+UI&family=Open+Sans:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <nav class="breadcrumbs">
+        <a href="index.html" class="bc-home" title="Página Inicial">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+        </a>
+        <a href="preparar.html" class="bc-step">Preparar</a>
+        <a href="descobrir.html" class="bc-step">Descobrir</a>
+        <a href="racionalizar.html" class="bc-step">Racionalizar</a>
+        <a href="implementar.html" class="bc-step">Implementar</a>
+        <span class="bc-step active">Monitorar</span>
+    </nav>
+
+    <header>
+        <div class="header-title-container">
+            <div>
+                <h1>PDRIM: Dashboard Monitorar</h1>
+                <p>Etapa 5: Acompanhamento de indicadores de eficiência e segurança do processo.</p>
+                <p id="header-initiative-name">Iniciativa: <span id="header-initiative-text"></span></p>
+            </div>
+        </div>
+    </header>
+
+    <main class="container" id="capture-area" style="max-width: 1000px;">
+        <div class="header-controls no-print" id="non-printable-controls">
+            <div class="button-group">
+                <button class="btn-main" style="background: var(--dark-accent); color: white;" onclick="refreshData()">Atualizar Dados Locais</button>
+                <select id="dash-filter-date" class="btn-main" style="border: 1px solid #cbd5e1; background: #f8fafc;" onchange="renderDashboard()">
+                    <option value="all">Todo o Período</option>
+                    <option value="30">Últimos 30 Dias</option>
+                    <option value="90">Últimos 90 Dias</option>
+                    <option value="180">Últimos 180 Dias</option>
+                </select>
+            </div>
+            <div class="button-group">
+                <input type="file" id="import-file" accept=".json" style="display:none" onchange="importJSON(event)">
+                <button class="btn-main btn-secondary" onclick="toggleWidgetModal()">Personalizar Painel</button>
+                <div class="dropdown">
+                    <button class="btn-main btn-secondary" onclick="toggleDropdown(event)">+ AÇÕES</button>
+                    <div class="dropdown-content" id="otherActionsDropdown">
+                        <a href="#" onclick="document.getElementById('import-file').click(); return false;">Importar</a>
+                        <a href="#" onclick="exportJSON(); return false;">Exportar</a>
+                        <a href="#" onclick="printPage(); return false;">Gerar PDF</a>
+                        <a href="#" id="btn-zerar-mon" onclick="zerarArtefato(); return false;" style="color: var(--danger);">Zerar Artefato</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="smart-alerts-container" style="display:none; flex-direction:column; gap:10px; margin-bottom:20px;"></div>
+
+        <div id="dashboard-container">
+            <div id="dashboard-empty-state" class="empty-state" style="display: none; background: #fff; border: 1px solid var(--border-color); border-radius: 8px; margin-top: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                <div style="font-size: 3rem; margin-bottom: 15px;">📊</div>
+                <p style="margin: 0; color: #475569; font-size: 1.1rem; font-weight: 700;">Nenhum dado encontrado para gerar o painel.</p>
+                <p style="margin: 5px 0 0 0; color: #64748b; font-size: 0.9rem; font-weight: 400;">Alimente a ferramenta nas etapas anteriores (Descobrir, Implementar) ou importe um artefato.</p>
+            </div>
+
+            <!-- As 3 colunas principais -->
+            <div class="dashboard-grid">
+                <!-- Ala de Eficiência (Esquerda) -->
+                <div class="dash-col dash-left" id="col-left">
+                    <h3 class="dash-title">Eficiência Operacional</h3>
+                    <div class="dash-widget" id="wdg-adherence">
+                        <h4>Aderência ao Fluxo Padrão</h4>
+                        <canvas id="chartAdherence"></canvas>
+                    </div>
+                    <div class="dash-widget" id="wdg-leadtime">
+                        <h4>Lead Time do Processo</h4>
+                        <canvas id="chartLeadTime"></canvas>
+                    </div>
+                    <div class="dash-widget" id="wdg-cycletime">
+                        <h4>Cycle Time (Atividade/Setor)</h4>
+                        <canvas id="chartCycleTime"></canvas>
+                    </div>
+                </div>
+
+                <!-- Ala de Correlação (Centro) -->
+                <div class="dash-col dash-center" id="col-center">
+                    <h3 class="dash-title">Desempenho x Risco</h3>
+                    <div class="dash-widget" id="wdg-correlation" style="height: 100%; justify-content: center; display: flex; flex-direction: column;">
+                        <h4>Incidentes vs Instâncias Concluídas (Mensal)</h4>
+                        <div style="flex: 1; min-height: 300px; display: flex; align-items: center; justify-content: center;">
+                            <canvas id="chartCorrelation"></canvas>
+                        </div>
+                        <p class="dash-note">Compara o volume de incidentes em relação à quantidade de atividades finalizadas no período.</p>
+                    </div>
+                </div>
+
+                <!-- Ala de Segurança (Direita) -->
+                <div class="dash-col dash-right" id="col-right">
+                    <h3 class="dash-title">Segurança e Valor</h3>
+                    <div class="dash-widget" id="wdg-heatmap">
+                        <h4>Mapa de Calor (Riscos Residuais)</h4>
+                        <div id="heatmap-container" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; width: 100%; aspect-ratio: 1/1; background: #e2e8f0; padding: 2px; border-radius: 4px; overflow: hidden; margin: 0 auto; max-width: 250px;"></div>
+                    </div>
+                    <div class="dash-widget" id="wdg-risktype">
+                        <h4>Riscos por Impacto</h4>
+                        <canvas id="chartRiskTypeImpact"></canvas>
+                    </div>
+                    <div class="dash-widget" id="wdg-incidentstatus">
+                        <h4>Incidentes por Status</h4>
+                        <canvas id="chartIncidentStatus"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bases Inferiores -->
+            <div class="dashboard-bottom" id="col-bottom">
+                <div class="dash-widget dash-half" id="wdg-activities">
+                    <h4>Atividades do Processo (Resumo)</h4>
+                    <div id="list-activities" class="dash-list"></div>
+                </div>
+                <div class="dash-widget dash-half" id="wdg-incidents">
+                    <h4>Incidentes de Risco (Últimos Registros)</h4>
+                    <div id="list-incidents" class="dash-list"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal Personalizar Painel -->
+    <div id="widgetModalOverlay" class="modal-overlay" style="display:none; z-index: 10005;" onclick="if(event.target===this) toggleWidgetModal()">
+        <div class="modal-content" style="width: 500px; padding: 25px; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h2 style="margin: 0; color: var(--dark-accent); font-size: 1.2rem;">Personalizar Painel</h2>
+                <button class="btn-edit-action btn-cancel-section" style="background-color: #fee2e2; color: #991b1b;" onclick="toggleWidgetModal()">✕ Fechar</button>
+            </div>
+            
+            <label style="font-weight: bold; color: var(--accent); margin-bottom: 15px; display: block;">
+                <input type="checkbox" id="toggle-drag-mode" onchange="toggleDragMode()"> Habilitar Reordenação de Gráficos
+            </label>
+            
+            <label style="font-weight: bold; color: #15803d; margin-bottom: 15px; display: block;">
+                <input type="checkbox" id="toggle-alerts" onchange="toggleAlerts()"> Mostrar Alertas Inteligentes
+            </label>
+            
+            <div style="font-weight: bold; color: #475569; margin-bottom: 8px; border-bottom: 1px solid #cbd5e1; padding-bottom: 4px;">Gráficos Padrão</div>
+            <div style="display: flex; flex-direction: column; gap: 12px; font-size: 0.9rem;" id="widget-toggles">
+                <label><input type="checkbox" value="wdg-adherence" onchange="updateWidgetConfig()"> Aderência ao Fluxo Padrão</label>
+                <label><input type="checkbox" value="wdg-leadtime" onchange="updateWidgetConfig()"> Lead Time do Processo</label>
+                <label><input type="checkbox" value="wdg-cycletime" onchange="updateWidgetConfig()"> Cycle Time (Atividade/Setor)</label>
+                <label><input type="checkbox" value="wdg-correlation" onchange="updateWidgetConfig()"> Desempenho x Risco (Correlação)</label>
+                <label><input type="checkbox" value="wdg-heatmap" onchange="updateWidgetConfig()"> Mapa de Calor (Riscos Residuais)</label>
+                <label><input type="checkbox" value="wdg-risktype" onchange="updateWidgetConfig()"> Riscos por Nível de Impacto</label>
+                <label><input type="checkbox" value="wdg-incidentstatus" onchange="updateWidgetConfig()"> Quantidade de Incidentes por Status</label>
+                <label><input type="checkbox" value="wdg-activities" onchange="updateWidgetConfig()"> Lista e Estatísticas de Atividades</label>
+                <label><input type="checkbox" value="wdg-incidents" onchange="updateWidgetConfig()"> Lista de Incidentes de Risco</label>
+            </div>
+            
+            <div style="display:flex; justify-content:space-between; align-items:center; margin: 15px 0 10px; border-bottom: 1px solid #cbd5e1; padding-bottom: 4px;">
+                <div style="font-weight: bold; color: #475569;">Gráficos Customizados</div>
+                <button class="btn-main btn-secondary" style="padding: 4px 8px; font-size: 0.75rem;" onclick="openCustomChartModal()">+ Novo</button>
+            </div>
+            <div id="custom-charts-list" style="display:flex; flex-direction:column; gap:8px;"></div>
+        </div>
+    </div>
+
+    <!-- Modal Novo Grafico Customizado -->
+    <div id="customChartModalOverlay" class="modal-overlay" style="display:none; z-index: 10010;" onclick="if(event.target===this) closeCustomChartModal()">
+        <div class="modal-content" style="width: 400px; padding: 20px;">
+            <h3 style="margin-top:0;">Novo Gráfico Customizado</h3>
+            <label style="font-size: 0.75rem; font-weight: bold; color: #475569;">Título</label>
+            <input type="text" id="cc-title" class="btn-main" style="width:100%; margin-bottom: 10px; cursor:text; text-align:left;">
+            <label style="font-size: 0.75rem; font-weight: bold; color: #475569;">Tipo de Gráfico</label>
+            <select id="cc-type" class="btn-main" style="width:100%; margin-bottom: 10px; cursor:pointer;">
+                <option value="bar">Barra</option>
+                <option value="pie">Pizza</option>
+                <option value="line">Linha</option>
+                <option value="doughnut">Rosca</option>
+            </select>
+            <label style="font-size: 0.75rem; font-weight: bold; color: #475569;">Analisar Entidade</label>
+            <select id="cc-entity" class="btn-main" style="width:100%; margin-bottom: 10px; cursor:pointer;">
+                <option value="acao">Ações de Implantação</option>
+                <option value="atividade">Atividades (Instâncias)</option>
+                <option value="risco">Incidentes de Risco</option>
+            </select>
+            <label style="font-size: 0.75rem; font-weight: bold; color: #475569;">Agrupar Por</label>
+            <select id="cc-group" class="btn-main" style="width:100%; margin-bottom: 10px; cursor:pointer;">
+                <option value="status">Status (Concluído/Andamento/Pendente)</option>
+                <option value="month">Mês (Data de Início)</option>
+            </select>
+            <div style="text-align: right; margin-top: 15px;">
+                <button class="btn-main btn-secondary" onclick="closeCustomChartModal()">Cancelar</button>
+                <button class="btn-main" style="background:var(--accent); color:white;" onclick="saveCustomChart()">Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>PDRIM Project &copy; 2026 - Desenvolvido por Fernando Breustedt</p>
+    </footer>
+
+    <div id="toast-container"></div>
+    <script src="js/script.js"></script>
+    <script src="js/monitorar.js"></script>
+</body>
+</html>

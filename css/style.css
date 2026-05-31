@@ -661,6 +661,17 @@ footer {
 .pdf-mode .interactive-pop { display: none !important; }
 .pdf-mode #pop-print-container { display: block !important; }
 
+/* PDF MODE (Monitorar - Relatório) */
+.pdf-mode .dashboard-grid,
+.pdf-mode .dashboard-bottom { display: block !important; }
+.pdf-mode .dash-col { display: block !important; }
+.pdf-mode .dash-widget { page-break-inside: avoid; break-inside: avoid; margin-bottom: 20px; width: 100%; box-sizing: border-box; }
+.pdf-mode .dash-list { max-height: none !important; overflow: visible !important; }
+.pdf-mode .dash-title { text-align: center !important; margin-top: 15px; margin-bottom: 15px; font-size: 1.3rem; }
+.pdf-mode .dash-widget canvas { max-height: 300px !important; margin: 0 auto; }
+.pdf-mode .dash-half { width: 100% !important; }
+.pdf-mode #wdg-correlation { min-height: 350px; }
+
 /* =========================================
    11. CLASSES UTILITÁRIAS E ALINHAMENTOS
    ========================================= */
@@ -766,3 +777,59 @@ footer {
 #editor-wrapper:focus-within { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15); }
 .ql-toolbar.ql-snow { border: none !important; border-bottom: 1px solid #cbd5e1 !important; background: #f8fafc; padding: 12px !important; }
 .ql-container.ql-snow { border: none !important; font-family: 'Open Sans', sans-serif; font-size: 0.95rem; }
+
+/* =========================================
+   13. ESTILOS DO DASHBOARD (MONITORAR)
+   ========================================= */
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(20, 1fr);
+    gap: 15px;
+    margin-bottom: 20px;
+}
+@media (max-width: 900px) {
+    .dashboard-grid { display: flex; flex-direction: column; }
+}
+.dash-col { display: flex; flex-direction: column; gap: 15px; min-width: 0; min-height: 150px; }
+.dash-left { grid-column: span 5; }
+.dash-center { grid-column: span 10; }
+.dash-right { grid-column: span 5; }
+.dash-title {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: var(--dark-accent);
+    margin: 0 0 5px 0;
+    text-transform: uppercase;
+    border-bottom: 2px solid var(--border-color);
+    padding-bottom: 5px;
+}
+.dash-left .dash-title { border-color: #3b82f6; }
+.dash-center .dash-title { border-color: #8b5cf6; text-align: center; }
+.dash-right .dash-title { border-color: #ef4444; text-align: right; }
+
+.dash-widget {
+    background: #ffffff;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 12px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    display: flex;
+    flex-direction: column;
+}
+.dash-widget h4 { margin: 0 0 10px 0; font-size: 0.75rem; color: #475569; text-transform: uppercase; text-align: center; }
+.dash-center .dash-widget h4 { font-size: 0.85rem; }
+.dashboard-bottom { display: grid; grid-template-columns: repeat(20, 1fr); gap: 15px; min-height: 150px; }
+.dash-half { grid-column: span 10; min-width: 0; }
+@media (max-width: 900px) { .dashboard-bottom { display: flex; flex-direction: column; } }
+.dash-list { max-height: 300px; overflow-y: auto; font-size: 0.8rem; }
+.dash-list-item { padding: 10px; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; }
+.dash-list-item:last-child { border-bottom: none; }
+.dash-note { font-size: 0.75rem; color: #64748b; text-align: center; margin-top: 10px; }
+.dash-widget canvas { max-width: 100%; max-height: 300px; }
+
+.dragging-widget {
+    opacity: 0.5;
+    border: 2px dashed var(--accent) !important;
+    transform: scale(0.98);
+    transition: none;
+}

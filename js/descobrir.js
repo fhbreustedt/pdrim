@@ -528,11 +528,15 @@ function renderCompareActRisk(mode) {
         html += '<span class="empty-msg">Nenhuma atividade</span>';
     } else {
         acts.forEach(a => {
+            const isPendingRisk = !a.noRisk && (!a.riskAssocs || a.riskAssocs.length === 0);
             const riskCount = a.riskAssocs ? a.riskAssocs.length : 0;
             let riskIcon = '';
             if (riskCount > 0) riskIcon = `⚠️ (${riskCount})`;
             else if (a.noRisk) riskIcon = `✅ (0)`;
             else riskIcon = `(0)`;
+            if (riskCount > 0) riskIcon = `<span style="color: var(--dark-accent);">⚠️ (${riskCount})</span>`;
+            else if (a.noRisk) riskIcon = `<span style="color: var(--dark-accent);">✅ (0)</span>`;
+            else riskIcon = `<span style="color: #ef4444;" title="Pendente de análise">❗ (0)</span>`;
             
             let timeStr = '';
             if (a.time && (a.time.d > 0 || a.time.h > 0 || a.time.m > 0 || a.time.s > 0)) {
@@ -543,10 +547,18 @@ function renderCompareActRisk(mode) {
                 if (a.time.s > 0) timeStr += `${a.time.s}s`;
                 timeStr = timeStr.trim() + `</span>`;
             }
+            const sectorStr = a.sector ? ` <span style="font-size: 0.6rem; color: #475569; font-weight: bold; background: #f1f5f9; padding: 1px 4px; border-radius: 4px; margin-left: 6px;">🏢 ${a.sector}</span>` : '';
             
             html += `<div class="mini-card" style="background: #fff; margin-bottom: 5px; font-size: 0.75rem; display: flex; justify-content: space-between; align-items: center;">
-                <span style="font-weight: 600; color: #475569;">${a.name}${timeStr}</span>
+                <span style="font-weight: 600; color: #475569;">${a.name}${sectorStr}${timeStr}</span>
                 <span style="color: var(--dark-accent); font-weight: bold;">${riskIcon}</span>
+            const bg = isPendingRisk ? '#fff1f2' : '#fff';
+            const col = isPendingRisk ? '#991b1b' : '#475569';
+            const borderStyle = isPendingRisk ? 'border: 1px dashed #fca5a5;' : '';
+            
+            html += `<div class="mini-card" style="background: ${bg}; ${borderStyle} margin-bottom: 5px; font-size: 0.75rem; display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-weight: 600; color: ${col};">${a.name}${sectorStr}${timeStr}</span>
+                <span style="font-weight: bold;">${riskIcon}</span>
             </div>`;
         });
     }
@@ -675,13 +687,24 @@ window.updateActTime = function(actId, field, val) {
     }
 };
 
+window.updateActSector = function(actId, val) {
+    const act = dbDesc.models[dbDesc.activeView].activities.find(a => a.id === actId);
+    if (act) {
+        act.sector = val.trim();
+        saveDesc();
+        renderActivityList();
+    }
+};
+
 function addActivity() {
     const inp = document.getElementById('new-activity-desc');
+    const inpSec = document.getElementById('new-activity-sector');
     if (!inp || !inp.value.trim()) return;
     
     const newAct = {
         id: 'act_' + Date.now(),
         name: inp.value.trim(),
+        sector: inpSec ? inpSec.value.trim() : '',
         riskAssocs: [],
         noRisk: false,
         steps: [],
@@ -690,6 +713,7 @@ function addActivity() {
     
     dbDesc.models[dbDesc.activeView].activities.push(newAct);
     inp.value = '';
+    if(inpSec) inpSec.value = '';
     saveDesc();
     renderAll();
 }
@@ -774,10 +798,11 @@ function renderActivityList() {
             }
             
             const timeStr = formatTimeStr(a.time);
+            const sectorStr = a.sector ? ` <span style="font-size: 0.65rem; color: #0f172a; background: #e2e8f0; padding: 2px 6px; border-radius: 4px; margin-left: 6px;">🏢 ${a.sector}</span>` : '';
             html += `<div class="mini-card hover-trigger" style="background:${bg}; color:${col}; cursor:pointer; align-items:center;" onclick="selectActivity('${a.id}')">
                 <div style="flex:1; display:flex; align-items:center;">
                     ${riskIcon}
-                    <b style="font-size:0.75rem; display:block; word-break:break-word; flex:1;">${a.name}${timeStr}</b>
+                    <b style="font-size:0.75rem; display:block; word-break:break-word; flex:1;">${a.name}${sectorStr}${timeStr}</b>
                 </div>
                 <div class="no-print hover-target" style="top:50%; transform:translateY(-50%); right:4px; align-items:center;">
                     <span style="cursor:pointer; color:#ef4444; font-size:1.1rem; line-height:1;" onclick="event.stopPropagation(); removeRisk('${a.id}', '${selectedRiskId}')" title="Desvincular">✕</span>
@@ -801,6 +826,11 @@ function renderActivityList() {
             const isSel = a.id === selectedActivityId;
             const bg = isSel ? 'var(--dark-accent)' : '#f8fafc';
             const col = isSel ? '#fff' : '#475569';
+            const isPendingRisk = !a.noRisk && (!a.riskAssocs || a.riskAssocs.length === 0);
+            
+            const bg = isSel ? 'var(--dark-accent)' : (isPendingRisk ? '#fff1f2' : '#f8fafc');
+            const col = isSel ? '#fff' : (isPendingRisk ? '#991b1b' : '#475569');
+            const borderStyle = isPendingRisk && !isSel ? 'border: 1px dashed #fca5a5;' : '';
             
             let riskIcon = '';
             const riskCount = a.riskAssocs ? a.riskAssocs.length : 0;
@@ -810,17 +840,22 @@ function renderActivityList() {
                     return r ? r.desc : '';
                 }).filter(Boolean).join('\n- ');
                 riskIcon = `<span title="Riscos Associados:\n- ${riskNames}" style="font-size:0.8rem; margin-right:6px; cursor:help; font-weight:bold; color:var(--dark-accent);">⚠️ (${riskCount})</span>`;
+                riskIcon = `<span title="Riscos Associados:\n- ${riskNames}" style="font-size:0.8rem; margin-right:6px; cursor:help; font-weight:bold; color:${isSel ? '#fde047' : 'var(--dark-accent)'};">⚠️ (${riskCount})</span>`;
             } else if (a.noRisk) {
                 riskIcon = `<span title="Atividade marcada como sem riscos" style="font-size:0.8rem; margin-right:6px; cursor:help; font-weight:bold; color:var(--dark-accent);">✅ (0)</span>`;
+                riskIcon = `<span title="Atividade marcada como sem riscos" style="font-size:0.8rem; margin-right:6px; cursor:help; font-weight:bold; color:${isSel ? '#bbf7d0' : 'var(--dark-accent)'};">✅ (0)</span>`;
             } else {
                 riskIcon = `<span title="Nenhum risco associado" style="font-size:0.8rem; margin-right:6px; cursor:help; font-weight:bold; color:var(--dark-accent);">(0)</span>`;
+                riskIcon = `<span title="Atenção: Nenhum risco associado nem marcada como 'Sem riscos'!" style="font-size:0.8rem; margin-right:6px; cursor:help; font-weight:bold; color:${isSel ? '#fca5a5' : '#ef4444'};">❗ (0)</span>`;
             }
             
             const timeStr = formatTimeStr(a.time);
+            const sectorStr = a.sector ? ` <span style="font-size: 0.65rem; color: #0f172a; background: #e2e8f0; padding: 2px 6px; border-radius: 4px; margin-left: 6px;">🏢 ${a.sector}</span>` : '';
             html += `<div class="mini-card hover-trigger" style="background:${bg}; color:${col}; cursor:pointer; align-items:center;" onclick="selectActivity('${a.id}')">
+            html += `<div class="mini-card hover-trigger" style="background:${bg}; color:${col}; ${borderStyle} cursor:pointer; align-items:center;" onclick="selectActivity('${a.id}')">
                 <div style="flex:1; display:flex; align-items:center;">
                     ${riskIcon}
-                    <b style="font-size:0.75rem; display:block; word-break:break-word; flex:1;">${a.name}${timeStr}</b>
+                    <b style="font-size:0.75rem; display:block; word-break:break-word; flex:1;">${a.name}${sectorStr}${timeStr}</b>
                 </div>
                 <div class="no-print hover-target" style="top:50%; transform:translateY(-50%); right:4px; align-items:center;">
                     <span style="cursor:pointer; color:#ef4444; font-size:1.1rem; line-height:1;" onclick="event.stopPropagation(); removeActivity('${a.id}')" title="Excluir">✕</span>
@@ -949,6 +984,10 @@ function renderRiskList() {
     if (timeContainer) {
         timeContainer.style.display = 'block';
         timeContainer.innerHTML = `
+            <div style="margin-bottom: 10px;">
+                <label style="font-size: 0.65rem; font-weight: 700; color: #0284c7; text-transform: uppercase; margin-bottom: 4px; display: block;">Setor Responsável</label>
+                <input type="text" id="act-sector-${act.id}" value="${act.sector || ''}" onchange="updateActSector('${act.id}', this.value)" style="width: 100%; padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.8rem;" placeholder="Ex: Financeiro">
+            </div>
             <div style="font-size: 0.65rem; font-weight: 700; color: #0284c7; text-transform: uppercase; margin-bottom: 6px;">Tempo Estimado da Atividade</div>
             <div style="display: flex; gap: 8px; align-items: center;">
                 <div style="display: flex; flex-direction: column; align-items: center;">
@@ -1296,6 +1335,8 @@ function renderMatrix() {
                     rows.push({ act: act, ra: ra, r: r, type: 'risk', score: ra.prob * ra.imp, order: ra.order || 0 });
                 }
             });
+        } else {
+            rows.push({ act: act, type: 'pending', score: -2, order: 0 });
         }
     });
 
@@ -1310,6 +1351,11 @@ function renderMatrix() {
             html += `<tr>
                 <td style="font-size:0.75rem; font-weight:700; color:#475569; max-width: 150px; overflow-wrap: break-word;">${row.act.name}</td>
                 <td colspan="4" style="font-size:0.75rem; color:#16a34a; font-style:italic; text-align:center;">Atividade não possui risco associado</td>
+            </tr>`;
+        } else if (row.type === 'pending') {
+            html += `<tr style="background-color: #fff1f2;">
+                <td style="font-size:0.75rem; font-weight:700; color:#991b1b; max-width: 150px; overflow-wrap: break-word; border-left: 4px solid #ef4444;">${row.act.name}</td>
+                <td colspan="4" style="font-size:0.75rem; color:#ef4444; font-weight:bold; text-align:center;">❗ Atenção: Vincule um risco ou marque a atividade como "Sem Risco"</td>
             </tr>`;
         } else {
             const { act, ra, r, score } = row;
