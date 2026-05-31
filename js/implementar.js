@@ -188,7 +188,7 @@ function openLogForm(type, logId = null) {
     if (type === 'atividade') borderColor = '#22c55e';
     else if (type === 'risco') borderColor = '#ef4444';
     else if (type === 'outro') borderColor = '#64748b';
-    formContainer.style.borderColor = borderColor;
+    formContainer.style.borderTop = '6px solid ' + borderColor;
     
     logTypeInput.value = type;
     logRefSelect.innerHTML = '<option value="">-- Registro não previsto (Avulso) --</option>';
@@ -223,6 +223,7 @@ function openLogForm(type, logId = null) {
             document.getElementById('logResponsible').value = log.responsible || '';
             currentMitigations = log.mitigations ? JSON.parse(JSON.stringify(log.mitigations)) : [];
             quill.root.innerHTML = log.desc || '';
+            document.getElementById('btn-toggle-obs').style.display = 'none';
             if (log.desc && log.desc !== '<p><br></p>') document.getElementById('editor-wrapper').style.display = 'flex';
         }
         if (btnBack) btnBack.style.display = 'none';
@@ -236,6 +237,7 @@ function openLogForm(type, logId = null) {
         document.getElementById('newMitigationEnd').value = '';
         currentMitigations = [];
         quill.setContents([]);
+        document.getElementById('btn-toggle-obs').style.display = 'inline-block';
         if (btnBack) btnBack.style.display = 'inline-block';
     }
     
@@ -260,6 +262,7 @@ function toggleObservation() {
     const wrap = document.getElementById('editor-wrapper');
     const isHidden = wrap.style.display === 'none';
     wrap.style.display = isHidden ? 'flex' : 'none';
+    if (isHidden) document.getElementById('btn-toggle-obs').style.display = 'none';
     if (isHidden) quill.focus();
 }
 
@@ -277,10 +280,10 @@ function renderMitigationList() {
         list.innerHTML += `
             <div class="mini-card" style="background: #fff;">
                 <div style="flex: 1;">
-                    <p style="margin:0; font-size: 0.85rem;">${m.desc}</p>
-                    <small style="color: #64748b;"><b>Por:</b> ${m.responsible} | <b>Início:</b> ${startStr} | <b>Fim:</b> ${endStr}</small>
+                    <p style="margin:0 0 6px 0; font-size: 0.95rem; font-weight: 600; color: #1e293b;">${m.desc}</p>
+                    <small style="color: #64748b; font-size: 0.75rem; display: flex; gap: 15px;"><span>👤 ${m.responsible}</span> <span>🗓️ <b>Início:</b> ${startStr}</span> <span>🏁 <b>Fim:</b> ${endStr}</span></small>
                 </div>
-                <button type="button" class="btn-edit-action" style="background: #fee2e2; color: #991b1b;" onclick="removeMitigationAction(${index})">✕</button>
+                <button type="button" class="btn-main" style="background: #fff1f2; color: #e11d48; border: 1px solid #ffe4e6; padding: 8px 12px; border-radius: 8px; font-weight: bold; margin-left: 15px;" onclick="removeMitigationAction(${index})">✕</button>
             </div>
         `;
     });
