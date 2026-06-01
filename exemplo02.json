@@ -1,0 +1,197 @@
+{
+  "pdrim_prep_v10_9": {
+    "processName": "Preparar Bolo de Cenoura",
+    "s1_phrase": "Mitigar o bolo solado e a cobertura dura para viabilizar um bolo perfeito.",
+    "sec1": [
+      {"cat": "OBJ", "val": "Fazer um bolo fofinho e saboroso"},
+      {"cat": "DOR", "val": "Bolo solando frequentemente"},
+      {"cat": "DOR", "val": "Cobertura fica muito dura"},
+      {"cat": "NEC", "val": "Receita padronizada"},
+      {"cat": "NEC", "val": "Forno na temperatura correta"}
+    ],
+    "sec2": [
+      {"cat": "DONO", "val": "Avó"},
+      {"cat": "GEST", "val": "Mãe"},
+      {"cat": "EXEC", "val": "Eu"},
+      {"cat": "S", "val": "Receita testada de família"},
+      {"cat": "W", "val": "Forno com temperatura irregular"},
+      {"cat": "O", "val": "Cenouras orgânicas baratas"},
+      {"cat": "T", "val": "Falta de gás"}
+    ],
+    "sec3": [
+      {"cat": "MAT", "type": "RES", "val": "Cenoura, óleo, ovos, açúcar, farinha, fermento"},
+      {"cat": "MAT", "type": "RES", "val": "Chocolate em pó, manteiga, leite"},
+      {"cat": "PES", "type": "SCOPE", "scope": "IN", "val": "Preparo da massa e cobertura"},
+      {"cat": "PES", "type": "SCOPE", "scope": "OUT", "val": "Compra dos ingredientes no mercado"}
+    ],
+    "sec4": [
+      {"cat": "KPI", "val": "Tempo total de preparo", "min": "50", "max": "70", "cur": "65", "meta": "55", "uni": "min"},
+      {"cat": "KRI", "val": "Número de bolos queimados ou solados", "isCritical": true, "meta": "0", "uni": "bolos"}
+    ],
+    "sec5": [
+      {"cat": "ART", "val": "Receita Documentada no Caderno", "icon": "📄"},
+      {"cat": "RES", "val": "Bolo de Cenoura Servido", "icon": "🎁"}
+    ],
+    "time": {
+      "1": {"i": "2025-01-01", "f": "2025-01-05"},
+      "2": {"i": "2025-01-06", "f": "2025-01-10"},
+      "3": {"i": "2025-01-11", "f": "2025-01-15"},
+      "4": {"i": "2025-01-16", "f": "2025-12-31"},
+      "5": {"i": "2025-01-16", "f": "2025-12-31"}
+    }
+  },
+  "pdrim_desc_v10_9": {
+    "activeView": "to-be",
+    "baseModel": "to-be",
+    "models": {
+      "to-be": {
+        "image": "",
+        "drawings": "",
+        "legacyDrawing": "",
+        "drawingObjects": [],
+        "risks": [
+          {"id": "risk_1", "desc": "Bolo solar devido à mistura excessiva de farinha com o glúten"},
+          {"id": "risk_2", "desc": "Bolo queimar no fundo por temperatura inadequada desregulada"}
+        ],
+        "activities": [
+          {
+            "id": "act_1", "name": "Separar Ingredientes", "sector": "Cozinha", "noRisk": true, "riskAssocs": [],
+            "steps": [{"id": "step_1_1", "desc": "Separar 3 cenouras"}, {"id": "step_1_2", "desc": "Separar óleo, ovos, açúcar e farinha"}]
+          },
+          {
+            "id": "act_2", "name": "Bater no liquidificador", "sector": "Cozinha", "noRisk": true, "riskAssocs": [],
+            "steps": [{"id": "step_2_1", "desc": "Bater cenouras, óleo, ovos e açúcar"}]
+          },
+          {
+            "id": "act_3", "name": "Misturar secos", "sector": "Cozinha", "noRisk": false,
+            "riskAssocs": [{"riskId": "risk_1", "prob": 2, "imp": 3}],
+            "steps": [{"id": "step_3_1", "desc": "Misturar a farinha suavemente com o fouet"}, {"id": "step_3_2", "desc": "Adicionar o fermento"}]
+          },
+          {
+            "id": "act_4", "name": "Assar o bolo", "sector": "Cozinha", "noRisk": false,
+            "riskAssocs": [{"riskId": "risk_2", "prob": 3, "imp": 3}],
+            "steps": [{"id": "step_4_1", "desc": "Pré-aquecer forno"}, {"id": "step_4_2", "desc": "Assar por 45 minutos a 180°C"}]
+          },
+          {
+            "id": "act_5", "name": "Fazer cobertura", "sector": "Cozinha", "noRisk": true, "riskAssocs": [],
+            "steps": [{"id": "step_5_1", "desc": "Misturar chocolate, manteiga, açúcar e leite"}, {"id": "step_5_2", "desc": "Levar ao fogo e jogar sobre o bolo pronto"}]
+          }
+        ]
+      },
+      "as-is": { 
+        "image": "", "drawings": "", "legacyDrawing": "", "drawingObjects": [], 
+        "activities": [
+          {"id": "as_act_1", "name": "Juntar ingredientes sem medida correta", "sector": "Cozinha", "noRisk": false, "riskAssocs": [{"riskId": "as_risk_1", "prob": 3, "imp": 3}], "steps": [{"id": "as_step_1", "desc": "Pegar cenouras, trigo e bater tudo no liquidificador de uma vez"}]},
+          {"id": "as_act_2", "name": "Assar no olho", "sector": "Cozinha", "noRisk": false, "riskAssocs": [], "steps": [{"id": "as_step_2", "desc": "Colocar no forno em temperatura máxima até cheirar a bolo"}]}
+        ], 
+        "risks": [
+          {"id": "as_risk_1", "desc": "Bolo não cresce por bater farinha no liquidificador"}
+        ] 
+      },
+      "compare": { "image": "", "drawings": "", "legacyDrawing": "", "drawingObjects": [], "activities": [], "risks": [] }
+    }
+  },
+  "pdrim_rac_v10_9": [
+    {
+      "id": 1, "title": "Comprar termômetro culinário", "cat": "Tecnologia", "desc": "Comprar um termômetro de forno para não errar a temperatura", "status": "realizado", "linkedItem": "risk_2", "date": "2025-01-16", "label": "Evento Único"
+    },
+    {
+      "id": 2, "title": "Aprender a misturar com fouet", "cat": "Capacitação", "desc": "Assistir tutoriais de confeitaria para não bater demais a farinha", "status": "realizado", "linkedItem": "risk_1", "date": "2025-01-17", "label": "Evento Único"
+    },
+    {
+      "id": 3, "title": "Definir medidas padronizadas (Xícaras)", "cat": "Processos", "desc": "Documentar a quantidade exata usando colheres e xícaras padrão de 240ml", "status": "realizado", "linkedItem": "", "date": "2025-01-18", "label": "Evento Único"
+    },
+    {
+      "id": 4, "title": "Comprar fouet profissional", "cat": "Infraestrutura", "desc": "Adquirir utensílio de melhor qualidade para massa não empelotar", "status": "realizado", "linkedItem": "", "date": "2025-01-19", "label": "Evento Único"
+    },
+    {
+      "id": 5, "title": "Acordar novos horários de lanche", "cat": "Mudança", "desc": "Avisar a família que o bolo demora mais para assar devagar a 180 graus", "status": "realizado", "linkedItem": "", "date": "2025-01-20", "label": "Evento Único"
+    }
+  ],
+  "pdrim_imp_v10_9": {
+    "logs": [
+      {"id": 101, "type": "acao", "date": "2025-01-16T14:00", "startDate": "2025-01-16T14:00", "endDate": "2025-01-16T15:00", "refId": "1", "title": "Comprar termômetro culinário", "instanceId": "", "responsible": "Eu", "mitigations": [], "desc": ""},
+      {"id": 102, "type": "acao", "date": "2025-01-17T14:00", "startDate": "2025-01-17T14:00", "endDate": "2025-01-17T15:00", "refId": "2", "title": "Aprender a misturar com fouet", "instanceId": "", "responsible": "Eu", "mitigations": [], "desc": ""},
+      {"id": 103, "type": "acao", "date": "2025-01-18T10:00", "startDate": "2025-01-18T10:00", "endDate": "2025-01-18T11:00", "refId": "3", "title": "Definir medidas padronizadas (Xícaras)", "instanceId": "", "responsible": "Mãe", "mitigations": [], "desc": ""},
+      {"id": 104, "type": "acao", "date": "2025-01-19T10:00", "startDate": "2025-01-19T10:00", "endDate": "2025-01-19T10:15", "refId": "4", "title": "Comprar fouet profissional", "instanceId": "", "responsible": "Mãe", "mitigations": [], "desc": ""},
+      {"id": 105, "type": "acao", "date": "2025-01-20T14:00", "startDate": "2025-01-20T14:00", "endDate": "2025-01-20T14:10", "refId": "5", "title": "Acordar novos horários de lanche", "instanceId": "", "responsible": "Avó", "mitigations": [], "desc": ""},
+      {"id": 11, "type": "atividade", "date": "2025-01-20T14:00", "startDate": "2025-01-20T14:00", "endDate": "2025-01-20T14:10", "refId": "act_1", "title": "Separar Ingredientes", "instanceId": "Bolo_01", "responsible": "Eu", "mitigations": [], "desc": ""},
+      {"id": 12, "type": "atividade", "date": "2025-01-20T14:10", "startDate": "2025-01-20T14:10", "endDate": "2025-01-20T14:15", "refId": "act_2", "title": "Bater no liquidificador", "instanceId": "Bolo_01", "responsible": "Eu", "mitigations": [], "desc": ""},
+      {"id": 13, "type": "atividade", "date": "2025-01-20T14:15", "startDate": "2025-01-20T14:15", "endDate": "2025-01-20T14:20", "refId": "act_3", "title": "Misturar secos", "instanceId": "Bolo_01", "responsible": "Eu", "mitigations": [], "desc": ""},
+      {"id": 14, "type": "atividade", "date": "2025-01-20T14:20", "startDate": "2025-01-20T14:20", "endDate": "2025-01-20T15:05", "refId": "act_4", "title": "Assar o bolo", "instanceId": "Bolo_01", "responsible": "Eu", "mitigations": [], "desc": ""},
+      {"id": 15, "type": "atividade", "date": "2025-01-20T15:05", "startDate": "2025-01-20T15:05", "endDate": "2025-01-20T15:15", "refId": "act_5", "title": "Fazer cobertura", "instanceId": "Bolo_01", "responsible": "Eu", "mitigations": [], "desc": ""},
+      {"id": 21, "type": "atividade", "date": "2025-02-15T14:00", "startDate": "2025-02-15T14:00", "endDate": "2025-02-15T14:10", "refId": "act_1", "title": "Separar Ingredientes", "instanceId": "Bolo_02", "responsible": "Eu", "mitigations": [], "desc": ""},
+      {"id": 22, "type": "atividade", "date": "2025-02-15T14:10", "startDate": "2025-02-15T14:10", "endDate": "2025-02-15T14:15", "refId": "act_2", "title": "Bater no liquidificador", "instanceId": "Bolo_02", "responsible": "Eu", "mitigations": [], "desc": ""},
+      {"id": 23, "type": "atividade", "date": "2025-02-15T14:15", "startDate": "2025-02-15T14:15", "endDate": "2025-02-15T14:20", "refId": "act_3", "title": "Misturar secos", "instanceId": "Bolo_02", "responsible": "Eu", "mitigations": [], "desc": ""},
+      {"id": 24, "type": "atividade", "date": "2025-02-15T14:20", "startDate": "2025-02-15T14:20", "endDate": "2025-02-15T15:05", "refId": "act_4", "title": "Assar o bolo", "instanceId": "Bolo_02", "responsible": "Eu", "mitigations": [], "desc": ""},
+      {"id": 25, "type": "atividade", "date": "2025-02-15T15:05", "startDate": "2025-02-15T15:05", "endDate": "2025-02-15T15:15", "refId": "act_5", "title": "Fazer cobertura", "instanceId": "Bolo_02", "responsible": "Eu", "mitigations": [], "desc": ""},
+      {"id": 31, "type": "atividade", "date": "2025-03-20T14:00", "startDate": "2025-03-20T14:00", "endDate": "2025-03-20T14:10", "refId": "act_1", "title": "Separar Ingredientes", "instanceId": "Bolo_03", "responsible": "Eu", "mitigations": [], "desc": ""},
+      {"id": 32, "type": "atividade", "date": "2025-03-20T14:10", "startDate": "2025-03-20T14:10", "endDate": "2025-03-20T14:15", "refId": "act_2", "title": "Bater no liquidificador", "instanceId": "Bolo_03", "responsible": "Eu", "mitigations": [], "desc": ""},
+      {"id": 33, "type": "atividade", "date": "2025-03-20T14:15", "startDate": "2025-03-20T14:15", "endDate": "2025-03-20T14:20", "refId": "act_3", "title": "Misturar secos", "instanceId": "Bolo_03", "responsible": "Eu", "mitigations": [], "desc": ""},
+      {"id": 34, "type": "atividade", "date": "2025-03-20T14:20", "startDate": "2025-03-20T14:20", "endDate": "2025-03-20T15:05", "refId": "act_4", "title": "Assar o bolo", "instanceId": "Bolo_03", "responsible": "Eu", "mitigations": [], "desc": ""},
+      {"id": 39, "type": "risco", "date": "2025-03-20T15:05", "startDate": "2025-03-20T15:05", "endDate": "2025-03-20T15:10", "refId": "risk_1", "title": "Bolo solou no centro", "instanceId": "Bolo_03", "responsible": "Eu", "mitigations": [{"desc": "Anotar para não bater tanto na próxima tentativa.", "responsible": "Eu", "startDate": "2025-03-20T15:05", "endDate": "2025-03-20T15:10"}], "desc": "Misturei com muita força"},
+      {"id": 35, "type": "atividade", "date": "2025-03-20T15:05", "startDate": "2025-03-20T15:05", "endDate": "2025-03-20T15:15", "refId": "act_5", "title": "Fazer cobertura", "instanceId": "Bolo_03", "responsible": "Eu", "mitigations": [], "desc": ""},
+      {"id": 41, "type": "atividade", "date": "2025-04-12T14:00", "startDate": "2025-04-12T14:00", "endDate": "2025-04-12T14:10", "refId": "act_1", "title": "Separar Ingredientes", "instanceId": "Bolo_04", "responsible": "Eu", "mitigations": [], "desc": ""},
+      {"id": 42, "type": "atividade", "date": "2025-04-12T14:10", "startDate": "2025-04-12T14:10", "endDate": "2025-04-12T14:15", "refId": "act_2", "title": "Bater no liquidificador", "instanceId": "Bolo_04", "responsible": "Eu", "mitigations": [], "desc": ""},
+      {"id": 43, "type": "atividade", "date": "2025-04-12T14:15", "startDate": "2025-04-12T14:15", "endDate": "2025-04-12T14:20", "refId": "act_3", "title": "Misturar secos", "instanceId": "Bolo_04", "responsible": "Eu", "mitigations": [], "desc": ""},
+      {"id": 44, "type": "atividade", "date": "2025-04-12T14:20", "startDate": "2025-04-12T14:20", "endDate": "2025-04-12T15:05", "refId": "act_4", "title": "Assar o bolo", "instanceId": "Bolo_04", "responsible": "Eu", "mitigations": [], "desc": ""},
+      {"id": 45, "type": "atividade", "date": "2025-04-12T15:05", "startDate": "2025-04-12T15:05", "endDate": "2025-04-12T15:15", "refId": "act_5", "title": "Fazer cobertura", "instanceId": "Bolo_04", "responsible": "Eu", "mitigations": [], "desc": ""},
+      {"id": 51, "type": "atividade", "date": "2025-05-05T14:00", "startDate": "2025-05-05T14:00", "endDate": "2025-05-05T14:10", "refId": "act_1", "title": "Separar Ingredientes", "instanceId": "Bolo_05", "responsible": "Eu", "mitigations": [], "desc": ""},
+      {"id": 52, "type": "atividade", "date": "2025-05-05T14:10", "startDate": "2025-05-05T14:10", "endDate": "2025-05-05T14:15", "refId": "act_2", "title": "Bater no liquidificador", "instanceId": "Bolo_05", "responsible": "Eu", "mitigations": [], "desc": ""},
+      {"id": 53, "type": "atividade", "date": "2025-05-05T14:15", "startDate": "2025-05-05T14:15", "endDate": "2025-05-05T14:20", "refId": "act_3", "title": "Misturar secos", "instanceId": "Bolo_05", "responsible": "Eu", "mitigations": [], "desc": ""},
+      {"id": 54, "type": "atividade", "date": "2025-05-05T14:20", "startDate": "2025-05-05T14:20", "endDate": "2025-05-05T15:05", "refId": "act_4", "title": "Assar o bolo", "instanceId": "Bolo_05", "responsible": "Eu", "mitigations": [], "desc": ""},
+      {"id": 55, "type": "atividade", "date": "2025-05-05T15:05", "startDate": "2025-05-05T15:05", "endDate": "2025-05-05T15:15", "refId": "act_5", "title": "Fazer cobertura", "instanceId": "Bolo_05", "responsible": "Eu", "mitigations": [], "desc": ""},
+      {"id": 61, "type": "atividade", "date": "2025-06-25T14:00", "startDate": "2025-06-25T14:00", "endDate": "2025-06-25T14:10", "refId": "act_1", "title": "Separar Ingredientes", "instanceId": "Bolo_06", "responsible": "Eu", "mitigations": [], "desc": ""},
+      {"id": 62, "type": "atividade", "date": "2025-06-25T14:10", "startDate": "2025-06-25T14:10", "endDate": "2025-06-25T14:15", "refId": "act_2", "title": "Bater no liquidificador", "instanceId": "Bolo_06", "responsible": "Eu", "mitigations": [], "desc": ""},
+      {"id": 63, "type": "atividade", "date": "2025-06-25T14:15", "startDate": "2025-06-25T14:15", "endDate": "2025-06-25T14:20", "refId": "act_3", "title": "Misturar secos", "instanceId": "Bolo_06", "responsible": "Eu", "mitigations": [], "desc": ""},
+      {"id": 64, "type": "atividade", "date": "2025-06-25T14:20", "startDate": "2025-06-25T14:20", "endDate": "2025-06-25T15:05", "refId": "act_4", "title": "Assar o bolo", "instanceId": "Bolo_06", "responsible": "Eu", "mitigations": [], "desc": ""},
+      {"id": 65, "type": "atividade", "date": "2025-06-25T15:05", "startDate": "2025-06-25T15:05", "endDate": "2025-06-25T15:15", "refId": "act_5", "title": "Fazer cobertura", "instanceId": "Bolo_06", "responsible": "Eu", "mitigations": [], "desc": ""},
+      {"id": 71, "type": "atividade", "date": "2025-07-15T14:00", "startDate": "2025-07-15T14:00", "endDate": "2025-07-15T14:10", "refId": "act_1", "title": "Separar Ingredientes", "instanceId": "Bolo_07", "responsible": "Eu", "mitigations": [], "desc": ""},
+      {"id": 72, "type": "atividade", "date": "2025-07-15T14:10", "startDate": "2025-07-15T14:10", "endDate": "2025-07-15T14:15", "refId": "act_2", "title": "Bater no liquidificador", "instanceId": "Bolo_07", "responsible": "Eu", "mitigations": [], "desc": ""},
+      {"id": 73, "type": "atividade", "date": "2025-07-15T14:15", "startDate": "2025-07-15T14:15", "endDate": "2025-07-15T14:20", "refId": "act_3", "title": "Misturar secos", "instanceId": "Bolo_07", "responsible": "Eu", "mitigations": [], "desc": ""},
+      {"id": 74, "type": "atividade", "date": "2025-07-15T14:20", "startDate": "2025-07-15T14:20", "endDate": "2025-07-15T15:05", "refId": "act_4", "title": "Assar o bolo", "instanceId": "Bolo_07", "responsible": "Eu", "mitigations": [], "desc": ""},
+      {"id": 79, "type": "risco", "date": "2025-07-15T15:05", "startDate": "2025-07-15T15:05", "endDate": "2025-07-15T15:10", "refId": "risk_2", "title": "Fundo do bolo queimou", "instanceId": "Bolo_07", "responsible": "Eu", "mitigations": [{"desc": "Cortar a parte queimada para não estragar", "responsible": "Eu", "startDate": "2025-07-15T15:05", "endDate": "2025-07-15T15:10"}], "desc": "Temperatura do forno desregulou"},
+      {"id": 75, "type": "atividade", "date": "2025-07-15T15:05", "startDate": "2025-07-15T15:05", "endDate": "2025-07-15T15:15", "refId": "act_5", "title": "Fazer cobertura", "instanceId": "Bolo_07", "responsible": "Eu", "mitigations": [], "desc": ""},
+      {"id": 81, "type": "atividade", "date": "2025-08-10T14:00", "startDate": "2025-08-10T14:00", "endDate": "2025-08-10T14:10", "refId": "act_1", "title": "Separar Ingredientes", "instanceId": "Bolo_08", "responsible": "Eu", "mitigations": [], "desc": ""},
+      {"id": 82, "type": "atividade", "date": "2025-08-10T14:10", "startDate": "2025-08-10T14:10", "endDate": "2025-08-10T14:15", "refId": "act_2", "title": "Bater no liquidificador", "instanceId": "Bolo_08", "responsible": "Eu", "mitigations": [], "desc": ""},
+      {"id": 83, "type": "atividade", "date": "2025-08-10T14:15", "startDate": "2025-08-10T14:15", "endDate": "2025-08-10T14:20", "refId": "act_3", "title": "Misturar secos", "instanceId": "Bolo_08", "responsible": "Eu", "mitigations": [], "desc": ""},
+      {"id": 84, "type": "atividade", "date": "2025-08-10T14:20", "startDate": "2025-08-10T14:20", "endDate": "2025-08-10T15:05", "refId": "act_4", "title": "Assar o bolo", "instanceId": "Bolo_08", "responsible": "Eu", "mitigations": [], "desc": ""},
+      {"id": 85, "type": "atividade", "date": "2025-08-10T15:05", "startDate": "2025-08-10T15:05", "endDate": "2025-08-10T15:15", "refId": "act_5", "title": "Fazer cobertura", "instanceId": "Bolo_08", "responsible": "Eu", "mitigations": [], "desc": ""},
+      {"id": 91, "type": "atividade", "date": "2025-09-05T14:00", "startDate": "2025-09-05T14:00", "endDate": "2025-09-05T14:10", "refId": "act_1", "title": "Separar Ingredientes", "instanceId": "Bolo_09", "responsible": "Eu", "mitigations": [], "desc": ""},
+      {"id": 92, "type": "atividade", "date": "2025-09-05T14:10", "startDate": "2025-09-05T14:10", "endDate": "2025-09-05T14:15", "refId": "act_2", "title": "Bater no liquidificador", "instanceId": "Bolo_09", "responsible": "Eu", "mitigations": [], "desc": ""},
+      {"id": 93, "type": "atividade", "date": "2025-09-05T14:15", "startDate": "2025-09-05T14:15", "endDate": "2025-09-05T14:20", "refId": "act_3", "title": "Misturar secos", "instanceId": "Bolo_09", "responsible": "Eu", "mitigations": [], "desc": ""},
+      {"id": 94, "type": "atividade", "date": "2025-09-05T14:20", "startDate": "2025-09-05T14:20", "endDate": "2025-09-05T15:05", "refId": "act_4", "title": "Assar o bolo", "instanceId": "Bolo_09", "responsible": "Eu", "mitigations": [], "desc": ""},
+      {"id": 95, "type": "atividade", "date": "2025-09-05T15:05", "startDate": "2025-09-05T15:05", "endDate": "2025-09-05T15:15", "refId": "act_5", "title": "Fazer cobertura", "instanceId": "Bolo_09", "responsible": "Eu", "mitigations": [], "desc": ""},
+      {"id": 1001, "type": "atividade", "date": "2025-10-30T14:00", "startDate": "2025-10-30T14:00", "endDate": "2025-10-30T14:10", "refId": "act_1", "title": "Separar Ingredientes", "instanceId": "Bolo_10", "responsible": "Eu", "mitigations": [], "desc": ""},
+      {"id": 1002, "type": "atividade", "date": "2025-10-30T14:10", "startDate": "2025-10-30T14:10", "endDate": "2025-10-30T14:15", "refId": "act_2", "title": "Bater no liquidificador", "instanceId": "Bolo_10", "responsible": "Eu", "mitigations": [], "desc": ""},
+      {"id": 1003, "type": "atividade", "date": "2025-10-30T14:15", "startDate": "2025-10-30T14:15", "endDate": "2025-10-30T14:20", "refId": "act_3", "title": "Misturar secos", "instanceId": "Bolo_10", "responsible": "Eu", "mitigations": [], "desc": ""},
+      {"id": 1004, "type": "atividade", "date": "2025-10-30T14:20", "startDate": "2025-10-30T14:20", "endDate": "2025-10-30T15:05", "refId": "act_4", "title": "Assar o bolo", "instanceId": "Bolo_10", "responsible": "Eu", "mitigations": [], "desc": ""},
+      {"id": 1005, "type": "atividade", "date": "2025-10-30T15:05", "startDate": "2025-10-30T15:05", "endDate": "2025-10-30T15:15", "refId": "act_5", "title": "Fazer cobertura", "instanceId": "Bolo_10", "responsible": "Eu", "mitigations": [], "desc": ""}
+    ],
+    "instances": {
+      "Bolo_01": {"checkedSteps": ["step_1_1","step_1_2","step_2_1","step_3_1","step_3_2","step_4_1","step_4_2","step_5_1","step_5_2"]},
+      "Bolo_02": {"checkedSteps": ["step_1_1","step_1_2","step_2_1","step_3_1","step_3_2","step_4_1","step_4_2","step_5_1","step_5_2"]},
+      "Bolo_03": {"checkedSteps": ["step_1_1","step_1_2","step_2_1","step_3_1","step_3_2","step_4_1","step_4_2","step_5_1","step_5_2"]},
+      "Bolo_04": {"checkedSteps": ["step_1_1","step_1_2","step_2_1","step_3_1","step_3_2","step_4_1","step_4_2","step_5_1","step_5_2"]},
+      "Bolo_05": {"checkedSteps": ["step_1_1","step_1_2","step_2_1","step_3_1","step_3_2","step_4_1","step_4_2","step_5_1","step_5_2"]},
+      "Bolo_06": {"checkedSteps": ["step_1_1","step_1_2","step_2_1","step_3_1","step_3_2","step_4_1","step_4_2","step_5_1","step_5_2"]},
+      "Bolo_07": {"checkedSteps": ["step_1_1","step_1_2","step_2_1","step_3_1","step_3_2","step_4_1","step_4_2","step_5_1","step_5_2"]},
+      "Bolo_08": {"checkedSteps": ["step_1_1","step_1_2","step_2_1","step_3_1","step_3_2","step_4_1","step_4_2","step_5_1","step_5_2"]},
+      "Bolo_09": {"checkedSteps": ["step_1_1","step_1_2","step_2_1","step_3_1","step_3_2","step_4_1","step_4_2","step_5_1","step_5_2"]},
+      "Bolo_10": {"checkedSteps": ["step_1_1","step_1_2","step_2_1","step_3_1","step_3_2","step_4_1","step_4_2","step_5_1","step_5_2"]}
+    }
+  },
+  "pdrim_mon_v10_9": {
+    "config": {
+      "hiddenWidgets": [],
+      "showAlerts": true,
+      "widgetOrder": {}
+    },
+    "data": {
+      "logs": [],
+      "instances": {},
+      "descActivities": [],
+      "descRisks": []
+    }
+  }
+}

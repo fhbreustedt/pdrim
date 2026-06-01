@@ -30,6 +30,30 @@ document.addEventListener('DOMContentLoaded', () => {
     initUI();
 });
 
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        // Fecha primeiro o formulário de log, caso esteja sobreposto a outro modal
+        const formModal = document.getElementById('formModalOverlay');
+        if (formModal && formModal.style.display === 'flex') {
+            closeLogForm();
+            return;
+        }
+        const overlays = [
+            { id: 'newLogModalOverlay', close: closeNewLogModal },
+            { id: 'categoryModal', close: closeCategoryModal },
+            { id: 'instanceModal', close: closeInstanceModal },
+            { id: 'riskHistoryModal', close: closeRiskHistoryModal }
+        ];
+        for (let modal of overlays) {
+            const el = document.getElementById(modal.id);
+            if (el && el.style.display === 'flex') {
+                modal.close();
+                return;
+            }
+        }
+    }
+});
+
 function initUI() {
     loadExternalData();
     
@@ -1520,7 +1544,16 @@ function sortTable(col) { if (currentSortCol === col) { currentSortDir = current
 function updateSortHeaders() { document.querySelectorAll('.sortable').forEach(th => { th.classList.remove('sort-asc', 'sort-desc'); if (th.dataset.col === currentSortCol) th.classList.add(`sort-${currentSortDir}`); }); }
 function switchView(view) { currentView = view; document.getElementById('cards-view').style.display = view === 'cards' ? 'block' : 'none'; document.getElementById('timeline-view').style.display = view === 'timeline' ? 'block' : 'none'; document.getElementById('table-view').style.display = view === 'table' ? 'block' : 'none'; document.getElementById('btn-view-cards').classList.toggle('active', view === 'cards'); document.getElementById('btn-view-timeline').classList.toggle('active', view === 'timeline'); document.getElementById('btn-view-table').classList.toggle('active', view === 'table'); renderLogs(); }
 function toggleDropdown(event) { event.stopPropagation(); const dropdown = document.getElementById("otherActionsDropdown").parentElement; const isShowing = dropdown.classList.contains('show'); document.querySelectorAll('.dropdown.show').forEach(d => d.classList.remove('show')); if (!isShowing) dropdown.classList.add('show'); }
-window.onclick = function(event) { if (!event.target.matches('.dropdown .btn-main')) { document.querySelectorAll('.dropdown.show').forEach(d => d.classList.remove('show')); } }
+window.onclick = function(event) { 
+    if (!event.target.matches('.dropdown .btn-main')) { document.querySelectorAll('.dropdown.show').forEach(d => d.classList.remove('show')); } 
+    if (event.target.classList.contains('modal-overlay')) {
+        if (event.target.id === 'newLogModalOverlay') closeNewLogModal();
+        else if (event.target.id === 'formModalOverlay') closeLogForm();
+        else if (event.target.id === 'categoryModal') closeCategoryModal();
+        else if (event.target.id === 'instanceModal') closeInstanceModal();
+        else if (event.target.id === 'riskHistoryModal') closeRiskHistoryModal();
+    }
+}
 
 function toggleDeleteMode() { const wrapper = document.getElementById('capture-area'); const btn = document.getElementById('btnDeleteToggle'); wrapper.classList.toggle('delete-mode'); const isDeleteMode = wrapper.classList.contains('delete-mode'); btn.innerText = isDeleteMode ? "Cancelar" : "Excluir Múltiplos"; const headerCheckbox = document.querySelector('.delete-checkbox-header'); if (headerCheckbox) { headerCheckbox.style.display = isDeleteMode ? 'inline-block' : 'none'; if (!isDeleteMode) headerCheckbox.checked = false; } if (!isDeleteMode) { selectedForDeletion = []; renderLogs(); } }
 function selectAll(check) { document.querySelectorAll('.delete-checkbox').forEach(cb => { if (cb.checked !== check) { cb.checked = check; handleCheckboxChange(cb); } }); }

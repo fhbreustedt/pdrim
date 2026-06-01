@@ -32,7 +32,7 @@
                     <div class="card-links">
                         <a href="#" class="btn">Instruções</a>
                         <a href="preparar.html" class="btn">Canvas</a>
-                        <a href="#" class="btn">Avaliar</a>
+                        <a href="javascript:void(0)" class="btn" onclick="openEvaluationModal('PREPARAR')">Avaliar</a>
                     </div>
                 </div>
                 <div class="card" data-step="D">
@@ -44,7 +44,7 @@
                     <div class="card-links">
                         <a href="#" class="btn">Instruções</a>
                         <a href="descobrir.html" class="btn">Canvas</a>
-                        <a href="#" class="btn">Avaliar</a>
+                        <a href="javascript:void(0)" class="btn" onclick="openEvaluationModal('DESCOBRIR')">Avaliar</a>
                     </div>
                 </div>
                 <div class="card" data-step="R">
@@ -56,7 +56,7 @@
                     <div class="card-links">
                         <a href="#" class="btn">Instruções</a>
                         <a href="racionalizar.html" class="btn">Template</a>
-                        <a href="#" class="btn">Avaliar</a>
+                        <a href="javascript:void(0)" class="btn" onclick="openEvaluationModal('RACION.')">Avaliar</a>
                     </div>
                 </div>
                 <div class="card" data-step="I">
@@ -68,7 +68,7 @@
                     <div class="card-links">
                         <a href="#" class="btn">Instruções</a>
                         <a href="implementar.html" class="btn">Template</a>
-                        <a href="#" class="btn">Avaliar</a>
+                        <a href="javascript:void(0)" class="btn" onclick="openEvaluationModal('IMPLEMENT.')">Avaliar</a>
                     </div>
                 </div>
                 <div class="card" data-step="M">
@@ -80,7 +80,7 @@
                     <div class="card-links">
                         <a href="#" class="btn">Instruções</a>
                         <a href="monitorar.html" class="btn">Template</a>
-                        <a href="#" class="btn">Avaliar</a>
+                        <a href="javascript:void(0)" class="btn" onclick="openEvaluationModal('MONITOR.')">Avaliar</a>
                     </div>
                 </div>
             </div>
@@ -92,6 +92,7 @@
             <button id="btn-export-init" class="btn-main" style="display: none;" onclick="exportInitiative()">Exportar</button>
             <button id="btn-pdf-init" class="btn-main" style="display: none;" onclick="gerarPDFIniciativa()">Gerar PDF</button>
             <button id="btn-zerar-init" class="btn-main btn-danger" style="display: none;" onclick="zerarIniciativa()">Zerar Iniciativa</button>
+            <button class="btn-main" style="background-color: var(--dark-accent); color: #fff; font-weight: bold;" onclick="openEvaluationModal(null)">📋 Avaliação da Iniciativa</button>
         </section>
 
         <div style="display: flex; justify-content: center; align-items: center; gap: 20px; flex-wrap: wrap; margin-top: 20px;">

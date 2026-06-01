@@ -15,6 +15,21 @@ document.addEventListener('DOMContentLoaded', () => {
     initMonitorarUI();
 });
 
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        const customChartModal = document.getElementById('customChartModalOverlay');
+        if (customChartModal && customChartModal.style.display === 'flex') {
+            closeCustomChartModal();
+            return;
+        }
+        const widgetModal = document.getElementById('widgetModalOverlay');
+        if (widgetModal && widgetModal.style.display === 'flex') {
+            toggleWidgetModal();
+            return;
+        }
+    }
+});
+
 function initMonitorarUI() {
     console.log("Módulo Monitorar inicializado.");
 
@@ -27,6 +42,12 @@ function initMonitorarUI() {
         } catch(e) {}
     } else {
         refreshData(); 
+    }
+
+    if (!dbMon.config) dbMon.config = {};
+    if (dbMon.config.dateFilter) {
+        const filterEl = document.getElementById('dash-filter-date');
+        if (filterEl) filterEl.value = dbMon.config.dateFilter;
     }
 
     updateBreadcrumbs();
@@ -338,7 +359,14 @@ function renderDashboard() {
         if (dashBottom) dashBottom.style.display = '';
     }
 
-    const filterVal = document.getElementById('dash-filter-date').value;
+    const filterEl = document.getElementById('dash-filter-date');
+    const filterVal = filterEl ? filterEl.value : 'all';
+    if (!dbMon.config) dbMon.config = {};
+    if (dbMon.config.dateFilter !== filterVal) {
+        dbMon.config.dateFilter = filterVal;
+        saveMonitorar();
+    }
+
     let logsToUse = logs;
     if (filterVal !== 'all') {
         const days = parseInt(filterVal);
@@ -485,6 +513,7 @@ function renderDashboard() {
             cont.insertAdjacentHTML('beforeend', `<div class="dash-widget dash-half custom-dynamic-widget" id="${cc.id}">
                 <h4>${cc.title}</h4><canvas id="canvas-${cc.id}"></canvas></div>`);
             let labels = []; let dataPoints = [];
+            let bgColors = ['#3b82f6', '#22c55e', '#ef4444', '#f59e0b', '#8b5cf6'];
             const relevantLogs = logsToUse.filter(l => l.type === cc.entity);
             
             if (cc.group === 'status') {
@@ -494,6 +523,7 @@ function renderDashboard() {
                     relevantLogs.filter(l => !l.endDate && l.startDate).length,
                     relevantLogs.filter(l => !l.endDate && !l.startDate).length
                 ];
+                bgColors = ['#22c55e', '#f59e0b', '#94a3b8'];
             } else if (cc.group === 'month') {
                 const months = {};
                 relevantLogs.forEach(l => {
@@ -509,7 +539,7 @@ function renderDashboard() {
                 type: cc.type,
                 data: {
                     labels: labels.length ? labels : ['Sem dados'],
-                    datasets: [{ label: 'Qtd Registros', data: labels.length ? dataPoints : [0], backgroundColor: ['#3b82f6', '#22c55e', '#ef4444', '#f59e0b', '#8b5cf6'] }]
+                    datasets: [{ label: 'Qtd Registros', data: labels.length ? dataPoints : [0], backgroundColor: bgColors }]
                 },
                 options: { plugins: { legend: { display: cc.type === 'pie' || cc.type === 'doughnut' } } }
             });
@@ -557,9 +587,26 @@ function renderSmartAlerts() {
 
 function renderHeatmap(descActivities) {
     const hm = document.getElementById('heatmap-container');
-    const counts = { '3-1':0, '3-2':0, '3-3':0, '2-1':0, '2-2':0, '2-3':0, '1-1':0, '1-2':0, '1-3':0 };
-    if (descActivities) { descActivities.forEach(act => { if (!act.noRisk && act.riskAssocs) { act.riskAssocs.forEach(ra => { counts[`${ra.prob}-${ra.imp}`]++; }); } }); }
-    const makeCell = (p, i, bg) => { const val = counts[`${p}-${i}`]; const text = val > 0 ? `<b style="font-size:1.2rem; color:#fff; text-shadow: 0 1px 2px rgba(0,0,0,0.5);">${val}</b>` : ''; return `<div style="background:${bg}; display:flex; align-items:center; justify-content:center; border-radius:2px;">${text}</div>`; };
+    if (hm) hm.style.overflow = 'visible';
+    const counts = { '3-1':[], '3-2':[], '3-3':[], '2-1':[], '2-2':[], '2-3':[], '1-1':[], '1-2':[], '1-3':[] };
+    if (descActivities) { descActivities.forEach(act => { if (!act.noRisk && act.riskAssocs) { act.riskAssocs.forEach(ra => { const r = dbMon.data.descRisks.find(x => x.id === ra.riskId); if (r) counts[`${ra.prob}-${ra.imp}`].push(r.desc); }); } }); }
+    
+    const makeCell = (p, i, bg) => { 
+        const risks = [...new Set(counts[`${p}-${i}`])];
+        const val = counts[`${p}-${i}`].length; 
+        let text = '';
+        if (val > 0) {
+            const riskListHtml = risks.map(r => `• ${r}`).join('<br>');
+            text = `<div class="hover-trigger" style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; cursor: help;">
+                        <b style="font-size:1.2rem; color:#fff; text-shadow: 0 1px 2px rgba(0,0,0,0.5);">${val}</b>
+                        <div class="hover-target no-print" style="top: auto; bottom: 80%; left: 50%; transform: translateX(-50%); right: auto; width: max-content; max-width: 250px; flex-direction: column; align-items: flex-start; text-align: left; font-size: 0.75rem; color: #1e293b; z-index: 100;">
+                            <b style="color: var(--dark-accent); border-bottom: 1px solid #e2e8f0; width: 100%; padding-bottom: 4px; margin-bottom: 4px;">Riscos (${val}):</b>
+                            <span>${riskListHtml}</span>
+                        </div>
+                    </div>`;
+        }
+        return `<div style="background:${bg}; display:flex; align-items:center; justify-content:center; border-radius:2px;">${text}</div>`; 
+    };
     hm.innerHTML = `${makeCell(3, 1, '#facc15')} ${makeCell(3, 2, '#ef4444')} ${makeCell(3, 3, '#b91c1c')} ${makeCell(2, 1, '#4ade80')} ${makeCell(2, 2, '#facc15')} ${makeCell(2, 3, '#ef4444')} ${makeCell(1, 1, '#22c55e')} ${makeCell(1, 2, '#4ade80')} ${makeCell(1, 3, '#facc15')}`;
 }
 
@@ -623,7 +670,13 @@ function renderLists(logs, descActivities) {
 }
 
 function toggleDropdown(event) { event.stopPropagation(); const dropdown = document.getElementById("otherActionsDropdown").parentElement; const isShowing = dropdown.classList.contains('show'); document.querySelectorAll('.dropdown.show').forEach(d => d.classList.remove('show')); if (!isShowing) dropdown.classList.add('show'); }
-window.onclick = function(event) { if (!event.target.matches('.dropdown .btn-main')) { document.querySelectorAll('.dropdown.show').forEach(d => d.classList.remove('show')); } }
+window.onclick = function(event) { 
+    if (!event.target.matches('.dropdown .btn-main')) { document.querySelectorAll('.dropdown.show').forEach(d => d.classList.remove('show')); } 
+    if (event.target.classList.contains('modal-overlay')) {
+        if (event.target.id === 'widgetModalOverlay') toggleWidgetModal();
+        else if (event.target.id === 'customChartModalOverlay') closeCustomChartModal();
+    }
+}
 
 function importJSON(event) { if (!event.target.files.length) return; const reader = new FileReader(); reader.onload = (e) => { try { const parsed = JSON.parse(e.target.result); dbMon = parsed; saveMonitorar(); renderDashboard(); showToast("Dashboard importado com sucesso!", "success"); } catch (err) { showToast("Arquivo JSON Inválido.", "error"); } }; reader.readAsText(event.target.files[0]); event.target.value = ''; }
 function exportJSON() { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(dbMon)], {type: "application/json"})); a.download = `pdrim_monitorar_${new Date().toISOString().slice(0,10)}.json`; a.click(); localStorage.setItem('pdrim_exported', 'true'); showToast("Arquivo exportado com sucesso!", "success"); }

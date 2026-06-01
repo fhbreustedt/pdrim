@@ -68,24 +68,26 @@
             <!-- As 3 colunas principais -->
             <div class="dashboard-grid">
                 <!-- Ala de Eficiência (Esquerda) -->
-                <div class="dash-col dash-left" id="col-left">
+                <div class="dash-col dash-left" id="col-left" style="grid-column: span 4;">
                     <h3 class="dash-title">Eficiência Operacional</h3>
                     <div class="dash-widget" id="wdg-adherence">
                         <h4>Aderência ao Fluxo Padrão</h4>
                         <canvas id="chartAdherence"></canvas>
                     </div>
                     <div class="dash-widget" id="wdg-leadtime">
-                        <h4>Lead Time do Processo</h4>
-                        <canvas id="chartLeadTime"></canvas>
+                        <h4>Tempo Médio do Processo (Lead Time)</h4>
+                        <div id="labelLeadTime" style="font-size: 1.8rem; font-weight: bold; text-align: center; color: var(--accent); padding: 10px 0;">--</div>
+                        <canvas id="chartLeadTime" style="display: none;"></canvas>
                     </div>
                     <div class="dash-widget" id="wdg-cycletime">
-                        <h4>Cycle Time (Atividade/Setor)</h4>
-                        <canvas id="chartCycleTime"></canvas>
+                        <h4>Tempo Médio de Ativ. (Cycle Time)</h4>
+                        <div id="labelCycleTime" style="font-size: 1.8rem; font-weight: bold; text-align: center; color: var(--accent); padding: 10px 0;">--</div>
+                        <canvas id="chartCycleTime" style="display: none;"></canvas>
                     </div>
                 </div>
 
                 <!-- Ala de Correlação (Centro) -->
-                <div class="dash-col dash-center" id="col-center">
+                <div class="dash-col dash-center" id="col-center" style="grid-column: span 12;">
                     <h3 class="dash-title">Desempenho x Risco</h3>
                     <div class="dash-widget" id="wdg-correlation" style="height: 100%; justify-content: center; display: flex; flex-direction: column;">
                         <h4>Incidentes vs Instâncias Concluídas (Mensal)</h4>
@@ -97,7 +99,7 @@
                 </div>
 
                 <!-- Ala de Segurança (Direita) -->
-                <div class="dash-col dash-right" id="col-right">
+                <div class="dash-col dash-right" id="col-right" style="grid-column: span 4;">
                     <h3 class="dash-title">Segurança e Valor</h3>
                     <div class="dash-widget" id="wdg-heatmap">
                         <h4>Mapa de Calor (Riscos Residuais)</h4>
@@ -108,8 +110,18 @@
                         <canvas id="chartRiskTypeImpact"></canvas>
                     </div>
                     <div class="dash-widget" id="wdg-incidentstatus">
-                        <h4>Incidentes por Status</h4>
-                        <canvas id="chartIncidentStatus"></canvas>
+                        <h4>Status dos Incidentes</h4>
+                        <div id="labelIncidentStatus" style="display: flex; justify-content: space-around; padding: 15px 0;">
+                            <div style="text-align: center;">
+                                <div style="font-size: 2rem; font-weight: bold; color: #b45309;" id="val-inc-trat">--</div>
+                                <div style="font-size: 0.75rem; color: #475569; text-transform: uppercase;">Em Tratamento</div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="font-size: 2rem; font-weight: bold; color: #166534;" id="val-inc-mitig">--</div>
+                                <div style="font-size: 0.75rem; color: #475569; text-transform: uppercase;">Mitigados</div>
+                            </div>
+                        </div>
+                        <canvas id="chartIncidentStatus" style="display: none;"></canvas>
                     </div>
                 </div>
             </div>
@@ -203,5 +215,84 @@
     <div id="toast-container"></div>
     <script src="js/script.js"></script>
     <script src="js/monitorar.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            setInterval(updateCustomLabels, 1500);
+        });
+
+        const originalRenderDashboard = window.renderDashboard;
+        if (typeof originalRenderDashboard === 'function') {
+            window.renderDashboard = function(...args) {
+                const res = originalRenderDashboard.apply(this, args);
+                setTimeout(updateCustomLabels, 200);
+                return res;
+            };
+        }
+
+        function updateCustomLabels() {
+            const monData = JSON.parse(localStorage.getItem('pdrim_mon_v10_9') || '{}');
+            const logs = monData.data ? (monData.data.logs || []) : [];
+            
+            const instances = {};
+            logs.forEach(l => {
+                if (l.instanceId) {
+                    if (!instances[l.instanceId]) instances[l.instanceId] = { start: null, end: null };
+                    const s = new Date(l.startDate || l.date);
+                    const e = l.endDate ? new Date(l.endDate) : null;
+                    
+                    if (!instances[l.instanceId].start || s < instances[l.instanceId].start) instances[l.instanceId].start = s;
+                    if (e && (!instances[l.instanceId].end || e > instances[l.instanceId].end)) instances[l.instanceId].end = e;
+                }
+            });
+
+            let totalLeadTime = 0;
+            let completedInstances = 0;
+            Object.values(instances).forEach(inst => {
+                if (inst.start && inst.end) {
+                    totalLeadTime += (inst.end - inst.start);
+                    completedInstances++;
+                }
+            });
+            
+            let totalCycleTime = 0;
+            let completedActivities = 0;
+            logs.forEach(l => {
+                if (l.type === 'atividade' && (l.startDate || l.date) && l.endDate) {
+                    const s = new Date(l.startDate || l.date);
+                    const e = new Date(l.endDate);
+                    totalCycleTime += (e - s);
+                    completedActivities++;
+                }
+            });
+
+            const formatTime = (ms) => {
+                if (ms === 0 || isNaN(ms)) return '--';
+                const mins = Math.floor(ms / 60000);
+                if (mins < 60) return mins + 'm';
+                const hrs = Math.floor(mins / 60);
+                const remMins = mins % 60;
+                if (hrs < 24) return hrs + 'h ' + remMins + 'm';
+                const days = Math.floor(hrs / 24);
+                const remHrs = hrs % 24;
+                return days + 'd ' + remHrs + 'h';
+            };
+
+            const avgLead = completedInstances > 0 ? totalLeadTime / completedInstances : 0;
+            const avgCycle = completedActivities > 0 ? totalCycleTime / completedActivities : 0;
+
+            const lblLead = document.getElementById('labelLeadTime');
+            const lblCycle = document.getElementById('labelCycleTime');
+            if (lblLead) lblLead.innerText = formatTime(avgLead);
+            if (lblCycle) lblCycle.innerText = formatTime(avgCycle);
+
+            const incTrat = logs.filter(l => l.type === 'risco' && !l.endDate).length;
+            const incMitig = logs.filter(l => l.type === 'risco' && l.endDate).length;
+
+            const lblTrat = document.getElementById('val-inc-trat');
+            const lblMitig = document.getElementById('val-inc-mitig');
+            if (lblTrat) lblTrat.innerText = incTrat;
+            if (lblMitig) lblMitig.innerText = incMitig;
+        }
+    </script>
 </body>
 </html>

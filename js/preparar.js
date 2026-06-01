@@ -228,8 +228,6 @@ function toggleStkDetails() {
     }
 }
 
-let currentTimeView = 'cards';
-let currentSwotView = 'matrix';
 let currentS3View = 'type';
 function switchS3View(view) {
     currentS3View = view;
@@ -237,7 +235,6 @@ function switchS3View(view) {
 }
 
 function switchTimeView(view) {
-    currentTimeView = view;
     document.getElementById('disp_time_cards').style.display = view === 'cards' ? 'flex' : 'none';
     document.getElementById('disp_time_timeline').style.display = view === 'timeline' ? 'block' : 'none';
     document.getElementById('disp_time_table').style.display = view === 'table' ? 'block' : 'none';
@@ -249,7 +246,6 @@ function switchTimeView(view) {
 }
 
 function switchSwotView(view) {
-    currentSwotView = view;
     document.getElementById('disp_swot_matrix').style.display = view === 'matrix' ? 'block' : 'none';
     document.getElementById('disp_swot_table').style.display = view === 'table' ? 'block' : 'none';
     

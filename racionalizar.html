@@ -49,8 +49,11 @@
                 </div>
             </div>
         </div>
-    <div id="formContainer" class="content-box no-print">
-        <h2 id="formTitle" style="margin-top: 0; font-size: 1.2rem; color: var(--dark-accent);">Nova Ação</h2>
+
+    <div id="formModalOverlay" class="modal-overlay" style="display: none;">
+        <div id="formContainer" class="modal-content no-print" style="display: block;">
+            <button type="button" class="modal-close" onclick="resetForm()" title="Fechar (Esc)">&times;</button>
+            <h2 id="formTitle" style="margin-top: 0; font-size: 1.2rem; color: var(--dark-accent);">Nova Ação</h2>
         <form id="pdrimForm">
             <input type="hidden" id="editId">
             <div class="form-row-1">
@@ -86,19 +89,20 @@
                 <button type="button" class="btn-main btn-secondary" style="padding: 4px 10px; font-size: 0.7rem; align-self: flex-start;" onclick="addIndicatorField()">+ Adicionar Indicador</button>
             </div>
 
-            <label>Descrição Detalhada</label>
+            <label style="margin-top: 15px;">Descrição Detalhada</label>
             <div id="editor-wrapper">
                 <div id="editor-container"></div>
             </div>
             <label style="margin-top: 15px;">Recursos Necessários</label>
-            <div id="resources-editor-wrapper" style="height: 150px; margin-bottom: 15px; background: white;">
+            <div id="resources-editor-wrapper" style="border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden; height: 150px; margin-bottom: 15px; background: white; transition: all 0.2s;">
                 <div id="resources-editor-container"></div>
             </div>
-            <div class="button-group" style="margin-top: 0px;">
-                <button type="submit" class="btn-main">SALVAR AÇÃO</button>
-                <button type="button" class="btn-main btn-cancel" onclick="resetForm()">CANCELAR</button>
+            <div class="button-group" style="margin-top: 25px; display: flex; gap: 15px;">
+                <button type="submit" class="btn-main" style="background: var(--dark-accent); color: white; border: none; padding: 12px 24px; font-size: 0.9rem; font-weight: bold; border-radius: 8px;">SALVAR AÇÃO</button>
+                <button type="button" class="btn-main btn-cancel" onclick="resetForm()" style="background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; padding: 12px 24px; font-size: 0.9rem; font-weight: bold; border-radius: 8px;">CANCELAR</button>
             </div>
         </form>
+    </div>
     </div>
 
     <div class="content-box" id="capture-area">

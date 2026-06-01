@@ -180,6 +180,7 @@ function switchImgView(view) {
         const imgDisplay = document.getElementById('img-display');
         const btnRemove = document.getElementById('btn-remove-img');
         const btnDraw = document.getElementById('btn-draw');
+        const btnLoadImg = document.getElementById('btn-load-img');
         const drawCanvas = document.getElementById('draw-canvas');
 
         isDrawingMode = false;
@@ -193,6 +194,7 @@ function switchImgView(view) {
             imgDisplay.style.display = 'block';
             btnRemove.style.display = 'inline-block';
             btnDraw.style.display = 'inline-block';
+            if (btnLoadImg) btnLoadImg.style.display = 'none';
             drawCanvas.style.display = 'block';
             setTimeout(setupCanvas, 50); // Setup after layout
         } else {
@@ -201,6 +203,7 @@ function switchImgView(view) {
             imgDisplay.style.display = 'none';
             btnRemove.style.display = 'none';
             btnDraw.style.display = 'none';
+            if (btnLoadImg) btnLoadImg.style.display = 'inline-block';
             drawCanvas.style.display = 'none';
         }
     }
@@ -531,9 +534,6 @@ function renderCompareActRisk(mode) {
             const isPendingRisk = !a.noRisk && (!a.riskAssocs || a.riskAssocs.length === 0);
             const riskCount = a.riskAssocs ? a.riskAssocs.length : 0;
             let riskIcon = '';
-            if (riskCount > 0) riskIcon = `⚠️ (${riskCount})`;
-            else if (a.noRisk) riskIcon = `✅ (0)`;
-            else riskIcon = `(0)`;
             if (riskCount > 0) riskIcon = `<span style="color: var(--dark-accent);">⚠️ (${riskCount})</span>`;
             else if (a.noRisk) riskIcon = `<span style="color: var(--dark-accent);">✅ (0)</span>`;
             else riskIcon = `<span style="color: #ef4444;" title="Pendente de análise">❗ (0)</span>`;
@@ -549,9 +549,6 @@ function renderCompareActRisk(mode) {
             }
             const sectorStr = a.sector ? ` <span style="font-size: 0.6rem; color: #475569; font-weight: bold; background: #f1f5f9; padding: 1px 4px; border-radius: 4px; margin-left: 6px;">🏢 ${a.sector}</span>` : '';
             
-            html += `<div class="mini-card" style="background: #fff; margin-bottom: 5px; font-size: 0.75rem; display: flex; justify-content: space-between; align-items: center;">
-                <span style="font-weight: 600; color: #475569;">${a.name}${sectorStr}${timeStr}</span>
-                <span style="color: var(--dark-accent); font-weight: bold;">${riskIcon}</span>
             const bg = isPendingRisk ? '#fff1f2' : '#fff';
             const col = isPendingRisk ? '#991b1b' : '#475569';
             const borderStyle = isPendingRisk ? 'border: 1px dashed #fca5a5;' : '';
@@ -618,19 +615,33 @@ function renderCompareMatrix(mode) {
 function renderCompareHeatmap(mode) {
     const hm = document.getElementById(`compare-${mode.replace('-','')}-heatmap`);
     if (!hm) return;
-    const counts = { '3-1':0, '3-2':0, '3-3':0, '2-1':0, '2-2':0, '2-3':0, '1-1':0, '1-2':0, '1-3':0 };
+    hm.style.overflow = 'visible';
+    const counts = { '3-1':[], '3-2':[], '3-3':[], '2-1':[], '2-2':[], '2-3':[], '1-1':[], '1-2':[], '1-3':[] };
     
+    const allRisks = dbDesc.models[mode].risks;
     dbDesc.models[mode].activities.forEach(act => {
         if (!act.noRisk && act.riskAssocs) {
             act.riskAssocs.forEach(ra => {
-                counts[`${ra.prob}-${ra.imp}`]++;
+                const r = allRisks.find(x => x.id === ra.riskId);
+                if (r) counts[`${ra.prob}-${ra.imp}`].push(r.desc);
             });
         }
     });
 
     const makeCell = (p, i, bg) => {
-        const val = counts[`${p}-${i}`];
-        const text = val > 0 ? `<b style="font-size:1.5rem; color:#fff; text-shadow: 0 1px 2px rgba(0,0,0,0.5);">${val}</b>` : '';
+        const risks = [...new Set(counts[`${p}-${i}`])];
+        const val = counts[`${p}-${i}`].length;
+        let text = '';
+        if (val > 0) {
+            const riskListHtml = risks.map(r => `• ${r}`).join('<br>');
+            text = `<div class="hover-trigger" style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; cursor: help;">
+                        <b style="font-size:1.5rem; color:#fff; text-shadow: 0 1px 2px rgba(0,0,0,0.5);">${val}</b>
+                        <div class="hover-target no-print" style="top: auto; bottom: 80%; left: 50%; transform: translateX(-50%); right: auto; width: max-content; max-width: 250px; flex-direction: column; align-items: flex-start; text-align: left; font-size: 0.75rem; color: #1e293b; z-index: 100;">
+                            <b style="color: var(--dark-accent); border-bottom: 1px solid #e2e8f0; width: 100%; padding-bottom: 4px; margin-bottom: 4px;">Riscos (${val}):</b>
+                            <span>${riskListHtml}</span>
+                        </div>
+                    </div>`;
+        }
         return `<div style="background:${bg}; display:flex; align-items:center; justify-content:center; border-radius:2px;">${text}</div>`;
     };
 
@@ -824,8 +835,6 @@ function renderActivityList() {
         
         acts.forEach(a => {
             const isSel = a.id === selectedActivityId;
-            const bg = isSel ? 'var(--dark-accent)' : '#f8fafc';
-            const col = isSel ? '#fff' : '#475569';
             const isPendingRisk = !a.noRisk && (!a.riskAssocs || a.riskAssocs.length === 0);
             
             const bg = isSel ? 'var(--dark-accent)' : (isPendingRisk ? '#fff1f2' : '#f8fafc');
@@ -839,19 +848,15 @@ function renderActivityList() {
                     const r = allRisks.find(x => x.id === ra.riskId);
                     return r ? r.desc : '';
                 }).filter(Boolean).join('\n- ');
-                riskIcon = `<span title="Riscos Associados:\n- ${riskNames}" style="font-size:0.8rem; margin-right:6px; cursor:help; font-weight:bold; color:var(--dark-accent);">⚠️ (${riskCount})</span>`;
                 riskIcon = `<span title="Riscos Associados:\n- ${riskNames}" style="font-size:0.8rem; margin-right:6px; cursor:help; font-weight:bold; color:${isSel ? '#fde047' : 'var(--dark-accent)'};">⚠️ (${riskCount})</span>`;
             } else if (a.noRisk) {
-                riskIcon = `<span title="Atividade marcada como sem riscos" style="font-size:0.8rem; margin-right:6px; cursor:help; font-weight:bold; color:var(--dark-accent);">✅ (0)</span>`;
                 riskIcon = `<span title="Atividade marcada como sem riscos" style="font-size:0.8rem; margin-right:6px; cursor:help; font-weight:bold; color:${isSel ? '#bbf7d0' : 'var(--dark-accent)'};">✅ (0)</span>`;
             } else {
-                riskIcon = `<span title="Nenhum risco associado" style="font-size:0.8rem; margin-right:6px; cursor:help; font-weight:bold; color:var(--dark-accent);">(0)</span>`;
                 riskIcon = `<span title="Atenção: Nenhum risco associado nem marcada como 'Sem riscos'!" style="font-size:0.8rem; margin-right:6px; cursor:help; font-weight:bold; color:${isSel ? '#fca5a5' : '#ef4444'};">❗ (0)</span>`;
             }
             
             const timeStr = formatTimeStr(a.time);
             const sectorStr = a.sector ? ` <span style="font-size: 0.65rem; color: #0f172a; background: #e2e8f0; padding: 2px 6px; border-radius: 4px; margin-left: 6px;">🏢 ${a.sector}</span>` : '';
-            html += `<div class="mini-card hover-trigger" style="background:${bg}; color:${col}; cursor:pointer; align-items:center;" onclick="selectActivity('${a.id}')">
             html += `<div class="mini-card hover-trigger" style="background:${bg}; color:${col}; ${borderStyle} cursor:pointer; align-items:center;" onclick="selectActivity('${a.id}')">
                 <div style="flex:1; display:flex; align-items:center;">
                     ${riskIcon}
@@ -1395,19 +1400,33 @@ function renderMatrix() {
 
 function renderHeatmap() {
     const hm = document.getElementById('heatmap-container');
-    const counts = { '3-1':0, '3-2':0, '3-3':0, '2-1':0, '2-2':0, '2-3':0, '1-1':0, '1-2':0, '1-3':0 };
+    if (hm) hm.style.overflow = 'visible';
+    const counts = { '3-1':[], '3-2':[], '3-3':[], '2-1':[], '2-2':[], '2-3':[], '1-1':[], '1-2':[], '1-3':[] };
     
+    const allRisks = dbDesc.models[dbDesc.activeView].risks;
     dbDesc.models[dbDesc.activeView].activities.forEach(act => {
         if (!act.noRisk && act.riskAssocs) {
             act.riskAssocs.forEach(ra => {
-                counts[`${ra.prob}-${ra.imp}`]++;
+                const r = allRisks.find(x => x.id === ra.riskId);
+                if (r) counts[`${ra.prob}-${ra.imp}`].push(r.desc);
             });
         }
     });
 
     const makeCell = (p, i, bg) => {
-        const val = counts[`${p}-${i}`];
-        const text = val > 0 ? `<b style="font-size:1.5rem; color:#fff; text-shadow: 0 1px 2px rgba(0,0,0,0.5);">${val}</b>` : '';
+        const risks = [...new Set(counts[`${p}-${i}`])];
+        const val = counts[`${p}-${i}`].length;
+        let text = '';
+        if (val > 0) {
+            const riskListHtml = risks.map(r => `• ${r}`).join('<br>');
+            text = `<div class="hover-trigger" style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; cursor: help;">
+                        <b style="font-size:1.5rem; color:#fff; text-shadow: 0 1px 2px rgba(0,0,0,0.5);">${val}</b>
+                        <div class="hover-target no-print" style="top: auto; bottom: 80%; left: 50%; transform: translateX(-50%); right: auto; width: max-content; max-width: 250px; flex-direction: column; align-items: flex-start; text-align: left; font-size: 0.75rem; color: #1e293b; z-index: 100;">
+                            <b style="color: var(--dark-accent); border-bottom: 1px solid #e2e8f0; width: 100%; padding-bottom: 4px; margin-bottom: 4px;">Riscos (${val}):</b>
+                            <span>${riskListHtml}</span>
+                        </div>
+                    </div>`;
+        }
         return `<div style="background:${bg}; display:flex; align-items:center; justify-content:center; border-radius:2px;">${text}</div>`;
     };
 

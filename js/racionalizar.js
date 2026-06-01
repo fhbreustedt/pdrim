@@ -89,31 +89,51 @@ function initUI() {
         dropdownContent.insertAdjacentHTML('beforeend', `<a href="#" id="btn-zerar-rac" onclick="zerarArtefato(); return false;" style="color: var(--danger);">Zerar Artefato</a>`);
     }
     
-    const formTitle = document.getElementById('formTitle');
-    if (formTitle && !document.getElementById('btn-cancel-formTitle')) {
-        const wrapper = document.createElement('div');
-        wrapper.style.display = 'flex';
-        wrapper.style.justifyContent = 'space-between';
-        wrapper.style.alignItems = 'center';
-        wrapper.style.marginBottom = '15px';
-        formTitle.parentNode.insertBefore(wrapper, formTitle);
-        formTitle.style.marginTop = '0';
-        formTitle.style.marginBottom = '0';
-        wrapper.appendChild(formTitle);
+    // Força o comportamento correto nos botões Salvar/Cancelar dentro do formulário
+    const formContainer = document.getElementById('formContainer');
+    if (formContainer) {
+        // Eleva os containers de botões para evitar que o Quill Editor sobreponha os cliques
+        const actionGroups = formContainer.querySelectorAll('.button-group, .header-controls');
+        actionGroups.forEach(grp => {
+            grp.style.position = 'relative';
+            grp.style.zIndex = '50';
+        });
 
-        const cancelBtn = document.createElement('button');
-        cancelBtn.id = 'btn-cancel-formTitle';
-        cancelBtn.className = 'btn-edit-action btn-cancel-section';
-        cancelBtn.innerText = 'Cancelar';
-        cancelBtn.style.backgroundColor = '#fee2e2';
-        cancelBtn.style.color = '#991b1b';
-        cancelBtn.type = 'button';
-        cancelBtn.onclick = resetForm;
-        wrapper.appendChild(cancelBtn);
+        const formButtons = formContainer.querySelectorAll('button, input[type="button"], input[type="submit"]');
+        formButtons.forEach(btn => {
+            btn.style.position = 'relative';
+            btn.style.zIndex = '50';
+            const text = (btn.innerText || btn.value || '').toLowerCase().trim();
+            const onclickAttr = btn.getAttribute('onclick') || '';
+            if (text.includes('salvar') || onclickAttr.includes('save()')) {
+                btn.removeAttribute('onclick'); 
+                btn.type = 'submit'; 
+                btn.setAttribute('form', 'pdrimForm');
+                btn.onclick = function(e) {
+                    e.preventDefault();
+                    handleFormSubmit();
+                };
+            }
+            if (text.includes('cancelar') && btn.id !== 'btn-cancel-formTitle') {
+                btn.removeAttribute('onclick');
+                btn.type = 'button';
+                btn.onclick = resetForm;
+            }
+        });
     }
+
     updateBreadcrumbs();
     updateHeaderInitiative();
 }
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        const formContainer = document.getElementById('formContainer');
+        if (formContainer && formContainer.style.display !== 'none') {
+            resetForm();
+        }
+    }
+});
 
 function updateSourceModelIndicator() {
     let indicator = document.getElementById('source-model-indicator');
@@ -320,7 +340,7 @@ function handleCategoryChange() {
         container.innerHTML = `
             <div style="margin-bottom: 15px;">
                 <label style="font-size: 0.65rem; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 4px; display: block;">Vincular a Risco (${sourceModelDesc.toUpperCase()})</label>
-                <select id="linked-item" style="padding: 10px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 0.85rem; width: 100%;">${opts}</select>
+                <select id="linked-item">${opts}</select>
             </div>
         `;
         container.style.display = 'block';
@@ -343,7 +363,7 @@ function handleCategoryChange() {
         container.innerHTML = `
             <div style="margin-bottom: 15px;">
                 <label style="font-size: 0.65rem; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 4px; display: block;">Vincular a Atividade/Risco (${sourceModelDesc.toUpperCase()})</label>
-                <select id="linked-item" style="padding: 10px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 0.85rem; width: 100%;">${opts}</select>
+                <select id="linked-item">${opts}</select>
             </div>
         `;
         container.style.display = 'block';
@@ -353,8 +373,25 @@ function handleCategoryChange() {
     }
 }
 
-function openNewForm() { resetForm(); document.getElementById('formTitle').innerText = 'Nova Ação'; document.getElementById('formContainer').style.display = 'block'; window.scrollTo(0,0); handleCategoryChange(); }
-function resetForm() { document.getElementById('formContainer').style.display = 'none'; document.getElementById('pdrimForm').reset(); document.getElementById('editId').value = ''; quill.setContents([]); quillResources.setContents([]); const indicatorList = document.getElementById('indicator-list'); if (indicatorList) indicatorList.innerHTML = ''; handleCategoryChange(); render(); }
+function openNewForm() {
+    resetForm();
+    document.getElementById('formTitle').innerText = 'Nova Ação';
+    document.getElementById('formModalOverlay').style.display = 'flex';
+    handleCategoryChange();
+}
+function resetForm(isOpening = false) { 
+    document.getElementById('formModalOverlay').style.display = 'none'; 
+    const form = document.getElementById('pdrimForm'); 
+    if(form) form.reset(); 
+    const editId = document.getElementById('editId'); 
+    if(editId) editId.value = ''; 
+    quill.setContents([]); 
+    quillResources.setContents([]); 
+    const indicatorList = document.getElementById('indicator-list'); 
+    if (indicatorList) indicatorList.innerHTML = ''; 
+    handleCategoryChange(); 
+    if (!isOpening) render();
+}
 
 function openNewFormWithCategory(cat) {
     openNewForm();
@@ -388,14 +425,49 @@ function editAction(id) {
     quill.root.innerHTML = action.desc;
     quillResources.root.innerHTML = action.resources || '';
     document.getElementById('formTitle').innerText = 'Editar Ação';
-    document.getElementById('formContainer').style.display = 'block';
-    window.scrollTo(0,0);
+    document.getElementById('formModalOverlay').style.display = 'flex';
     render();
 }
 
-document.getElementById('pdrimForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    const editId = document.getElementById('editId').value;
+const pdrimForm = document.getElementById('pdrimForm');
+if (pdrimForm) {
+    pdrimForm.setAttribute('novalidate', 'true');
+    pdrimForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        handleFormSubmit();
+    });
+}
+
+function handleFormSubmit() {
+    const titleElement = document.getElementById('title');
+    const titleVal = titleElement ? titleElement.value.trim() : '';
+    if (!titleVal) {
+        showToast("O título da ação é obrigatório.", "warning");
+        if (titleElement) titleElement.focus();
+        return;
+    }
+
+    const startElement = document.getElementById('start');
+    const endElement = document.getElementById('end');
+    const s = startElement ? startElement.value : '';
+    const en = endElement ? endElement.value : '';
+
+    if (!s || !en) {
+        showToast("As datas de Início e Fim são obrigatórias.", "warning");
+        if (!s && startElement) startElement.focus();
+        else if (!en && endElement) endElement.focus();
+        return;
+    }
+
+    if (new Date(s) > new Date(en)) {
+        showToast("A data de Fim não pode ser anterior à data de Início.", "warning");
+        return;
+    }
+
+    const editIdElement = document.getElementById('editId');
+    const editId = editIdElement ? editIdElement.value : '';
+    const catElement = document.getElementById('cat');
+    const catVal = catElement ? catElement.value : 'Outros';
     
     const linkContainer = document.getElementById('link-container');
     let linkedItem = '';
@@ -405,7 +477,7 @@ document.getElementById('pdrimForm').addEventListener('submit', function(e) {
     }
 
     let indicatorData = [];
-    if (document.getElementById('cat').value === 'Metas e Indicadores') {
+    if (catVal === 'Metas e Indicadores') {
         const entries = document.querySelectorAll('#indicator-list .indicator-entry');
         entries.forEach(entry => {
             const name = entry.querySelector('.indName').value;
@@ -420,15 +492,23 @@ document.getElementById('pdrimForm').addEventListener('submit', function(e) {
         });
     }
 
-    const common = { id: editId ? parseInt(editId) : Date.now(), title: document.getElementById('title').value, cat: document.getElementById('cat').value, desc: quill.root.innerHTML, resources: quillResources.root.innerHTML, status: 'pendente', linkedItem: linkedItem, indicatorData: indicatorData };
+    let currentStatus = 'pendente';
+    if (editId) {
+        const existing = flatActions.find(a => a.id == editId);
+        if (existing && existing.status) currentStatus = existing.status;
+    }
+
+    const common = { id: editId ? parseInt(editId) : Date.now(), title: titleVal, cat: catVal, desc: quill.root.innerHTML, resources: quillResources.root.innerHTML, status: currentStatus, linkedItem: linkedItem, indicatorData: indicatorData };
+    
     if(editId) flatActions = flatActions.filter(a => a.id != editId);
-    const s = document.getElementById('start').value;
-    const en = document.getElementById('end').value;
+    
     if(s === en) flatActions.push({...common, date: s, label: 'Evento Único'});
     else { flatActions.push({...common, date: s, label: 'Início'}); flatActions.push({...common, date: en, label: 'Fim'}); }
+    
     save();
-    resetForm(); render();
-});
+    resetForm(); 
+    render();
+}
 
 function toggleDeleteMode() {
     const wrapper = document.getElementById('capture-area');
@@ -959,16 +1039,6 @@ function showStatusSelectInTable(id, currentStatus, element) {
     setTimeout(() => sel.focus(), 10);
 }
 
-function showStatusSelect(id, date, index, cur) {
-    const card = document.getElementById(`card-${index}`);
-    const sel = document.createElement('select'); sel.className = 'status-select-inline';
-    ['pendente', 'andamento', 'realizado'].forEach(o => { const op = document.createElement('option'); op.value = o; op.text = o.toUpperCase(); if(o===cur) op.selected = true; sel.add(op); });
-    sel.onchange = () => { flatActions.forEach(a => { if (a.id == id) a.status = sel.value; }); save(); render(); };
-    sel.onblur = () => render(); 
-    card.appendChild(sel); 
-    setTimeout(() => sel.focus(), 10);
-}
-
 function toggleDropdown(event) {
     event.stopPropagation();
     const dropdown = document.getElementById("otherActionsDropdown").parentElement;
@@ -999,6 +1069,11 @@ window.onclick = function(event) {
   }
   if (!event.target.closest('.custom-tooltip-container')) {
     document.querySelectorAll('.custom-tooltip-container.pinned').forEach(t => t.classList.remove('pinned'));
+  }
+  if (event.target.classList.contains('modal-overlay')) {
+      if (event.target.id === 'formModalOverlay') {
+          resetForm();
+      }
   }
 }
 
