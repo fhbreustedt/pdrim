@@ -435,7 +435,10 @@ footer {
 
 /* Drag & Drop das Atividades para os Grupos de Etapas */
 .dragging-act { opacity: 0.5; transform: scale(0.98); }
+.dragging-group { opacity: 0.5; transform: scale(0.98); border: 2px dashed var(--accent) !important; }
 .drag-over-group { border: 2px dashed var(--accent) !important; background-color: #f0f7ff !important; }
+.drag-over-group-move { border-top: 4px solid var(--accent) !important; }
+.drag-over-act { border-top: 3px solid var(--accent) !important; padding-top: 5px !important; }
 
 /* Drag & Drop da Matriz de Riscos */
 .dragging-matrix { opacity: 0.5; background-color: #f8fafc; }

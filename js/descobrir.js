@@ -710,12 +710,14 @@ window.updateActSector = function(actId, val) {
 function addActivity() {
     const inp = document.getElementById('new-activity-desc');
     const inpSec = document.getElementById('new-activity-sector');
+    const inpEtapa = document.getElementById('new-activity-etapa');
     if (!inp || !inp.value.trim()) return;
     
     const newAct = {
         id: 'act_' + Date.now(),
         name: inp.value.trim(),
         sector: inpSec ? inpSec.value.trim() : '',
+        etapa: inpEtapa ? inpEtapa.value.trim() : '',
         riskAssocs: [],
         noRisk: false,
         steps: [],
@@ -725,6 +727,7 @@ function addActivity() {
     dbDesc.models[dbDesc.activeView].activities.push(newAct);
     inp.value = '';
     if(inpSec) inpSec.value = '';
+    if(inpEtapa) inpEtapa.value = '';
     saveDesc();
     renderAll();
 }
@@ -1444,6 +1447,15 @@ let isPopEditMode = false;
 let dragActIdPop = null;
 let dragStepIdxPop = null;
 let dragActIdPopGroup = null;
+let dragGroupNamePop = null;
+
+function onDragStartPopGroup(e, groupName) {
+    if (!isPopEditMode) return;
+    dragGroupNamePop = groupName;
+    e.dataTransfer.effectAllowed = 'move';
+    e.stopPropagation();
+    setTimeout(() => e.target.classList.add('dragging-group'), 0);
+}
 
 function onDragStartPopAct(e, actId) {
     if (!isPopEditMode) return;
@@ -1454,20 +1466,92 @@ function onDragStartPopAct(e, actId) {
 }
 
 function onDragOverPopGroup(e) {
-    if (!isPopEditMode || !dragActIdPopGroup) return;
+    if (!isPopEditMode) return;
     e.preventDefault();
+    if (dragActIdPopGroup) e.currentTarget.classList.add('drag-over-group');
+    else if (dragGroupNamePop) e.currentTarget.classList.add('drag-over-group-move');
+}
+
+function onDragLeavePopGroup(e) {
+    e.currentTarget.classList.remove('drag-over-group', 'drag-over-group-move');
 }
 
 function onDropPopGroup(e, groupName) {
+    if (!isPopEditMode) return;
+    e.preventDefault();
+    e.stopPropagation();
+    e.currentTarget.classList.remove('drag-over-group', 'drag-over-group-move');
+    
+    if (dragActIdPopGroup) {
+        const acts = dbDesc.models[dbDesc.activeView].activities;
+        const srcIdx = acts.findIndex(a => a.id === dragActIdPopGroup);
+        if (srcIdx >= 0) {
+            const act = acts[srcIdx];
+            act.etapa = targetGroupName === 'Etapas Não Classificadas' ? '' : targetGroupName;
+            
+            let lastIdx = -1;
+            for (let i = 0; i < acts.length; i++) {
+                const g = acts[i].etapa || 'Etapas Não Classificadas';
+                if (g === targetGroupName) lastIdx = i;
+            }
+            acts.splice(srcIdx, 1);
+            if (lastIdx !== -1 && lastIdx >= srcIdx) lastIdx--;
+            if (lastIdx !== -1) acts.splice(lastIdx + 1, 0, act);
+            else acts.push(act);
+            
+            saveDesc();
+            renderPop();
+        }
+        dragActIdPopGroup = null;
+    } else if (dragGroupNamePop && dragGroupNamePop !== targetGroupName) {
+        const acts = dbDesc.models[dbDesc.activeView].activities;
+        const srcActs = acts.filter(a => (a.etapa || 'Etapas Não Classificadas') === dragGroupNamePop);
+        const otherActs = acts.filter(a => (a.etapa || 'Etapas Não Classificadas') !== dragGroupNamePop);
+        
+        let insertIdx = otherActs.findIndex(a => (a.etapa || 'Etapas Não Classificadas') === targetGroupName);
+        if (insertIdx === -1) insertIdx = otherActs.length;
+        
+        otherActs.splice(insertIdx, 0, ...srcActs);
+        dbDesc.models[dbDesc.activeView].activities = otherActs;
+        
+        saveDesc();
+        renderPop();
+        dragGroupNamePop = null;
+    }
+}
+
+function onDragOverPopAct(e) {
     if (!isPopEditMode || !dragActIdPopGroup) return;
     e.preventDefault();
     e.stopPropagation();
-    const container = e.target.closest('.pop-group-container');
-    if (container) container.classList.remove('drag-over-group');
-    const act = dbDesc.models[dbDesc.activeView].activities.find(a => a.id === dragActIdPopGroup);
-    const origGroup = act.etapa || 'Etapas Não Classificadas';
-    if (act && origGroup !== groupName) {
-        act.etapa = groupName === 'Etapas Não Classificadas' ? '' : groupName;
+    e.currentTarget.classList.add('drag-over-act');
+}
+
+function onDragLeavePopAct(e) {
+    e.currentTarget.classList.remove('drag-over-act');
+}
+
+function onDropPopAct(e, targetActId) {
+    if (!isPopEditMode || !dragActIdPopGroup) return;
+    e.preventDefault();
+    e.stopPropagation();
+    e.currentTarget.classList.remove('drag-over-act');
+    
+    if (dragActIdPopGroup === targetActId) return;
+    
+    const acts = dbDesc.models[dbDesc.activeView].activities;
+    const srcIdx = acts.findIndex(a => a.id === dragActIdPopGroup);
+    const tgtIdx = acts.findIndex(a => a.id === targetActId);
+    
+    if (srcIdx >= 0 && tgtIdx >= 0) {
+        const srcAct = acts[srcIdx];
+        const tgtAct = acts[tgtIdx];
+        srcAct.etapa = tgtAct.etapa;
+        
+        acts.splice(srcIdx, 1);
+        const newTgtIdx = acts.findIndex(a => a.id === targetActId);
+        acts.splice(newTgtIdx, 0, srcAct);
+        
         saveDesc();
         renderPop();
     }
@@ -1601,7 +1685,7 @@ function renderPop() {
     
     Object.keys(groups).forEach(groupName => {
         html += `<div class="pop-group-container" style="background: #fdfdfd; border: 1px solid var(--border-color); border-radius: 8px; padding: 15px; transition: background-color 0.2s, border-color 0.2s;"
-            ${isPopEditMode ? `ondragover="onDragOverPopGroup(event)" ondragenter="this.classList.add('drag-over-group')" ondragleave="this.classList.remove('drag-over-group')" ondrop="onDropPopGroup(event, '${groupName}')"` : ''}>
+            ${isPopEditMode ? `draggable="true" ondragstart="onDragStartPopGroup(event, '${groupName}')" ondragend="this.classList.remove('dragging-group')" ondragover="onDragOverPopGroup(event)" ondragleave="onDragLeavePopGroup(event)" ondrop="onDropPopGroup(event, '${groupName}')"` : ''}>
             <h4 style="font-size: 0.95rem; color: var(--dark-accent); margin-top: 0; margin-bottom: 12px; padding-bottom: 5px; border-bottom: 2px solid var(--primary-soft); display: flex; align-items: center; gap: 8px;">
                 📌 ${groupName}
             </h4>
@@ -1612,7 +1696,7 @@ function renderPop() {
             const stepCount = (a.steps && a.steps.length > 0) ? a.steps.length : 0;
             
             html += `<div class="pop-act-container" style="border: 1px solid var(--border-color); border-radius: 6px; background: #fff; transition: opacity 0.2s, transform 0.2s;"
-                ${isPopEditMode ? `draggable="true" ondragstart="onDragStartPopAct(event, '${a.id}')" ondragend="this.classList.remove('dragging-act')"` : ''}>
+                ${isPopEditMode ? `draggable="true" ondragstart="onDragStartPopAct(event, '${a.id}')" ondragend="this.classList.remove('dragging-act')" ondragover="onDragOverPopAct(event)" ondragleave="onDragLeavePopAct(event)" ondrop="onDropPopAct(event, '${a.id}')"` : ''}>
                 <div style="padding: 10px 15px; background: #f8fafc; cursor: pointer; display: flex; justify-content: space-between; align-items: center; border-radius: ${isExpanded ? '5px 5px 0 0' : '5px'};" onclick="togglePopActivity('${a.id}')">
                     <div style="display: flex; align-items: center; gap: 10px; ${isPopEditMode ? 'cursor: grab;' : ''}">
                         <span style="font-weight: 700; color: var(--dark-accent); font-size: 0.8rem;">${isExpanded ? '▼' : '▶'}</span>

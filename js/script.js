@@ -138,6 +138,8 @@ function openEvaluationModal(etapaFiltro = null) {
             .eval-score-action { font-size: 0.75rem; color: #475569; margin-top: 4px; }
             .eval-iframe { position: fixed; top: 0; left: 0; width: 65%; height: 100%; border: none; z-index: 99998; display: none; opacity: 0; transition: opacity 0.3s ease-out; background: #f8fafc; }
             .eval-iframe.open { display: block; opacity: 1; }
+            .eval-panel.fullscreen { width: 100% !important; min-width: 100% !important; }
+            .eval-iframe.hidden { display: none !important; }
         `;
         document.head.appendChild(evalStyles);
 
@@ -243,6 +245,7 @@ function openEvaluationModal(etapaFiltro = null) {
         <div class="eval-header">
             <h2 style="margin:0; font-size:1.2rem; color:var(--dark-accent);">${title}</h2>
             <div class="no-print" style="display:flex; gap: 8px;">
+                <button class="btn-edit-action" style="font-size:0.8rem; padding: 6px 10px; background:#0284c7; color:#fff;" onclick="toggleEvalFullscreen()">⛶ Tela Cheia</button>
                 <button class="btn-edit-action" style="font-size:0.8rem; padding: 6px 10px; background:var(--accent); color:#fff;" onclick="printEvalReport()">PDF</button>
                 <button class="btn-edit-action" style="font-size:0.8rem; padding: 6px 10px; background: #fee2e2; color: #991b1b;" onclick="clearEvalAnswers('${etapaFiltro || ''}')">Limpar</button>
                 <button class="btn-edit-action" style="font-size:1.2rem; padding: 4px 10px;" onclick="closeEvaluationModal()">✕</button>
@@ -252,6 +255,7 @@ function openEvaluationModal(etapaFiltro = null) {
             <p style="font-size: 0.85rem; color: #64748b; margin-top: 0; margin-bottom: 20px;">Responda às afirmações abaixo utilizando a escala de 0 a 5.</p>
             ${qHtml}
             <button class="btn-main" style="width: 100%; justify-content: center; background: var(--dark-accent); color: white; padding: 12px; margin-top: 20px; font-weight: bold;" onclick="submitEvaluation('${etapaFiltro || ''}')">Enviar Respostas</button>
+            <button class="btn-main btn-secondary" style="width: 100%; justify-content: center; padding: 12px; margin-top: 10px; font-weight: bold;" onclick="pauseEvaluation()">⏸️ Pausar e Continuar Depois</button>
             <div id="evalResultsContainer" style="display: none;"></div>
         </div>
     `;
@@ -261,6 +265,25 @@ function openEvaluationModal(etapaFiltro = null) {
         document.getElementById('evalPanel').classList.add('open');
     }, 10);
 }
+
+window.toggleEvalFullscreen = function() {
+    const panel = document.getElementById('evalPanel');
+    const iframe = document.getElementById('evalIframe');
+    if (panel.classList.contains('fullscreen')) {
+        panel.classList.remove('fullscreen');
+        if(iframe) iframe.classList.remove('hidden');
+    } else {
+        panel.classList.add('fullscreen');
+        if(iframe) iframe.classList.add('hidden');
+    }
+};
+
+window.pauseEvaluation = function() {
+    closeEvaluationModal();
+    const alertMsg = "Respostas salvas localmente! Você pode retornar depois para concluir a avaliação.";
+    if (typeof showToast === 'function') showToast(alertMsg, "success");
+    else alert(alertMsg);
+};
 
 window.submitEvaluation = function(etapaFiltro) {
     renderEvalResults(etapaFiltro === '' ? null : etapaFiltro);
