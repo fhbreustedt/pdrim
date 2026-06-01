@@ -662,13 +662,19 @@ function renderComparePop(mode) {
         return;
     }
     popActs.forEach(a => {
-        html += `<div style="border: 1px solid var(--border-color); border-radius: 6px; background: #fff; overflow: hidden; margin-bottom: 5px;"><div style="padding: 8px 12px; background: #f8fafc; font-weight: 600; color: #334155; font-size: 0.75rem; display: flex; justify-content: space-between;"><span>${a.name}</span><span style="color: #64748b;">${a.steps.length} passos</span></div><div style="padding: 10px;">`;
+        const answeredCount = a.steps.filter(s => s.status).length;
+        const actProgressHtml = a.steps.length > 0 ? `${answeredCount} de ${a.steps.length}` : `0 passos`;
+
+        html += `<div style="border: 1px solid var(--border-color); border-radius: 6px; background: #fff; overflow: hidden; margin-bottom: 5px;"><div style="padding: 8px 12px; background: #f8fafc; font-weight: 600; color: #334155; font-size: 0.75rem; display: flex; justify-content: space-between;"><span>${a.name}</span><span style="color: #64748b; background: #e2e8f0; padding: 2px 8px; border-radius: 12px;">${actProgressHtml}</span></div><div style="padding: 10px;">`;
         a.steps.forEach((step, idx) => {
             const st = step.status;
             let stText = '', stCol = '';
-            if (st === 'sim') { stText = 'Sim'; stCol = '#22c55e'; }
-            else if (st === 'nao') { stText = 'Não'; stCol = '#ef4444'; }
-            else if (st === 'na') { stText = 'N/A'; stCol = '#64748b'; }
+            if (st) {
+                if (st === 'sim') { stText = 'Sim'; stCol = '#22c55e'; }
+                else if (st === 'nao') { stText = 'Não'; stCol = '#ef4444'; }
+                else if (st === 'na') { stText = 'N/A'; stCol = '#64748b'; }
+                else { stText = st; stCol = 'var(--accent)'; }
+            }
             const badge = stText ? `<span style="font-size: 0.6rem; padding: 1px 4px; border-radius: 4px; background: ${stCol}; color: #fff; white-space: nowrap;">${stText}</span>` : '';
             html += `<div style="display: flex; gap: 8px; align-items: flex-start; padding: 4px 0; font-size: 0.7rem; border-bottom: 1px dashed #f1f5f9;"><b style="color: var(--accent); min-width: 15px;">${idx + 1}.</b><span style="flex: 1;">${step.desc}</span>${badge}</div>`;
         });
@@ -1476,7 +1482,7 @@ function onDragLeavePopGroup(e) {
     e.currentTarget.classList.remove('drag-over-group', 'drag-over-group-move');
 }
 
-function onDropPopGroup(e, groupName) {
+function onDropPopGroup(e, targetGroupName) {
     if (!isPopEditMode) return;
     e.preventDefault();
     e.stopPropagation();
@@ -1621,15 +1627,6 @@ function onDropPop(e, actId, dropIdx) {
     }
 }
 
-function updateActEtapa(actId, val) {
-    const act = dbDesc.models[dbDesc.activeView].activities.find(a => a.id === actId);
-    if (act) {
-        act.etapa = val.trim();
-        saveDesc();
-        renderPop();
-    }
-}
-
 function attachPopMedia(actId, stepId) {
     const act = dbDesc.models[dbDesc.activeView].activities.find(a => a.id === actId);
     const step = act.steps.find(s => s.id === stepId);
@@ -1640,6 +1637,331 @@ function attachPopMedia(actId, stepId) {
         renderPop();
     }
 }
+
+window.renameEtapa = function(oldName) {
+    if (oldName === 'Etapas Não Classificadas') return;
+    const newName = prompt("Novo nome para a Etapa:", oldName);
+    if (!newName || !newName.trim() || newName.trim() === oldName) return;
+    
+    const acts = dbDesc.models[dbDesc.activeView].activities;
+    acts.forEach(a => {
+        if ((a.etapa || 'Etapas Não Classificadas') === oldName) {
+            a.etapa = newName.trim();
+        }
+    });
+    
+    saveDesc();
+    renderAll();
+};
+
+window.renamePopStep = function(actId, stepId) {
+    const act = dbDesc.models[dbDesc.activeView].activities.find(a => a.id === actId);
+    if (!act || !act.steps) return;
+    const step = act.steps.find(s => s.id === stepId);
+    if (!step) return;
+    const newDesc = prompt("Edite a descrição do passo:", step.desc);
+    if (newDesc && newDesc.trim() !== '') {
+        step.desc = newDesc.trim();
+        saveDesc();
+        renderPop();
+    }
+};
+
+window.editPopStepMarkers = function(actId, stepId) {
+    const act = dbDesc.models[dbDesc.activeView].activities.find(a => a.id === actId);
+    if (!act || !act.steps) return;
+    const step = act.steps.find(s => s.id === stepId);
+    if (!step) return;
+    const currentMarkers = (step.markers && step.markers.length > 0) ? step.markers.join(', ') : 'Sim, Não, N/A';
+    const input = prompt("Defina os marcadores separados por vírgula (ou deixe vazio para o padrão):", currentMarkers);
+    if (input !== null) {
+        const trimmed = input.trim();
+        if (trimmed === '' || trimmed.toLowerCase() === 'sim,não,n/a' || trimmed.toLowerCase() === 'sim,nao,n/a' || trimmed.toLowerCase() === 'sim, não, n/a' || trimmed.toLowerCase() === 'sim, nao, n/a') {
+            step.markers = null;
+            if (!['sim', 'nao', 'na'].includes(step.status)) step.status = null;
+        } else {
+            step.markers = trimmed.split(',').map(s => s.trim()).filter(s => s);
+            if (!step.markers.includes(step.status)) step.status = null;
+        }
+        saveDesc();
+        renderPop();
+    }
+};
+
+window.quickAddEtapa = function() {
+    const name = prompt("Nome da Nova Etapa:");
+    if (!name || !name.trim()) return;
+    
+    const newAct = {
+        id: 'act_' + Date.now(),
+        name: 'Nova Atividade',
+        sector: '',
+        etapa: name.trim(),
+        riskAssocs: [],
+        noRisk: false,
+        steps: [],
+        time: { d: 0, h: 0, m: 0, s: 0 }
+    };
+    
+    dbDesc.models[dbDesc.activeView].activities.push(newAct);
+    saveDesc();
+    renderAll();
+};
+
+window.quickAddActivityToEtapa = function(etapaName) {
+    const name = prompt("Nome da Nova Atividade:");
+    if (!name || !name.trim()) return;
+    
+    const newAct = {
+        id: 'act_' + Date.now(),
+        name: name.trim(),
+        sector: '',
+        etapa: etapaName === 'Etapas Não Classificadas' ? '' : etapaName,
+        riskAssocs: [],
+        noRisk: false,
+        steps: [],
+        time: { d: 0, h: 0, m: 0, s: 0 }
+    };
+    
+    const acts = dbDesc.models[dbDesc.activeView].activities;
+    let lastIdx = -1;
+    for (let i = 0; i < acts.length; i++) {
+        const g = acts[i].etapa || 'Etapas Não Classificadas';
+        if (g === etapaName) lastIdx = i;
+    }
+    
+    if (lastIdx !== -1) {
+        acts.splice(lastIdx + 1, 0, newAct);
+    } else {
+        acts.push(newAct);
+    }
+    
+    saveDesc();
+    renderAll();
+};
+
+window.handleActConversion = function(select, actId) {
+    const val = select.value;
+    select.value = '';
+    if (val === 'etapa') promoteActivityToEtapa(actId);
+    else if (val === 'passo') demoteActivityToStep(actId);
+};
+
+window.handleStepConversion = function(select, actId, stepId) {
+    const val = select.value;
+    select.value = '';
+    if (val === 'etapa') promoteStepToEtapa(actId, stepId);
+    else if (val === 'atividade') promoteStepToActivity(actId, stepId);
+};
+
+window.handleEtapaConversion = function(select, etapaName) {
+    const val = select.value;
+    select.value = '';
+    if (val === 'atividade') demoteEtapaToActivity(etapaName);
+    else if (val === 'passo') demoteEtapaToStep(etapaName);
+};
+
+window.promoteActivityToEtapa = function(actId) {
+    if (!confirm("Converter esta atividade em uma Etapa? Seus passos se tornarão atividades individuais desta nova Etapa.")) return;
+    const acts = dbDesc.models[dbDesc.activeView].activities;
+    const idx = acts.findIndex(a => a.id === actId);
+    if (idx === -1) return;
+    const act = acts[idx];
+    
+    const newEtapaName = act.name;
+    const newActivities = [];
+    
+    if (act.steps && act.steps.length > 0) {
+        act.steps.forEach(s => {
+            newActivities.push({ id: 'act_' + Date.now() + Math.random().toString(36).substr(2, 5), name: s.desc, sector: act.sector, etapa: newEtapaName, riskAssocs: [...act.riskAssocs], noRisk: act.noRisk, steps: [], time: { d: 0, h: 0, m: 0, s: 0 } });
+        });
+    } else {
+        newActivities.push({ id: 'act_' + Date.now() + Math.random().toString(36).substr(2, 5), name: 'Nova Atividade', sector: act.sector, etapa: newEtapaName, riskAssocs: [...act.riskAssocs], noRisk: act.noRisk, steps: [], time: { d: 0, h: 0, m: 0, s: 0 } });
+    }
+    
+    acts.splice(idx, 1, ...newActivities);
+    saveDesc();
+    renderAll();
+};
+
+window.demoteActivityToStep = function(actId) {
+    const acts = dbDesc.models[dbDesc.activeView].activities;
+    const idx = acts.findIndex(a => a.id === actId);
+    if (idx === -1) return;
+    const act = acts[idx];
+    
+    let targetAct = null;
+    for (let i = idx - 1; i >= 0; i--) {
+        if ((acts[i].etapa || 'Etapas Não Classificadas') === (act.etapa || 'Etapas Não Classificadas')) {
+            targetAct = acts[i];
+            break;
+        }
+    }
+    
+    if (!targetAct) {
+        showToast("Não há atividade anterior na mesma Etapa para absorver esta atividade como passo.", "warning");
+        return;
+        if (!confirm(`Rebaixar esta atividade? Como não há atividade anterior, uma "Nova Atividade" será criada para absorvê-la.`)) return;
+        targetAct = {
+            id: 'act_' + Date.now() + Math.random().toString(36).substr(2, 5),
+            name: 'Nova Atividade',
+            sector: act.sector,
+            etapa: act.etapa,
+            riskAssocs: [],
+            noRisk: false,
+            steps: [],
+            time: { d: 0, h: 0, m: 0, s: 0 }
+        };
+        acts.splice(idx, 0, targetAct);
+    } else {
+        if (!confirm(`Rebaixar esta atividade? Ela se tornará um passo da atividade "${targetAct.name}".`)) return;
+    }
+    
+    if (!confirm(`Rebaixar esta atividade? Ela se tornará um passo da atividade "${targetAct.name}".`)) return;
+    
+    if (!targetAct.steps) targetAct.steps = [];
+    
+    targetAct.steps.push({ id: 'step_' + Date.now() + Math.random().toString(36).substr(2, 5), desc: act.name, status: null });
+    if (act.steps && act.steps.length > 0) {
+        act.steps.forEach(s => {
+            targetAct.steps.push({ id: 'step_' + Date.now() + Math.random().toString(36).substr(2, 5), desc: s.desc, status: s.status });
+        });
+    }
+    
+    acts.splice(idx, 1);
+    const newIdx = acts.findIndex(a => a.id === actId);
+    acts.splice(newIdx, 1);
+    saveDesc();
+    renderAll();
+};
+
+window.promoteStepToActivity = function(actId, stepId) {
+    const acts = dbDesc.models[dbDesc.activeView].activities;
+    const actIdx = acts.findIndex(a => a.id === actId);
+    if (actIdx === -1) return;
+    const act = acts[actIdx];
+    
+    const stepIdx = act.steps.findIndex(s => s.id === stepId);
+    if (stepIdx === -1) return;
+    const step = act.steps[stepIdx];
+    
+    if (!confirm("Converter este passo em uma Atividade independente?")) return;
+    
+    const newAct = { id: 'act_' + Date.now() + Math.random().toString(36).substr(2, 5), name: step.desc, sector: act.sector, etapa: act.etapa, riskAssocs: [], noRisk: false, steps: [], time: { d: 0, h: 0, m: 0, s: 0 } };
+    
+    act.steps.splice(stepIdx, 1);
+    acts.splice(actIdx + 1, 0, newAct);
+    saveDesc();
+    renderAll();
+};
+
+window.promoteStepToEtapa = function(actId, stepId) {
+    const acts = dbDesc.models[dbDesc.activeView].activities;
+    const actIdx = acts.findIndex(a => a.id === actId);
+    if (actIdx === -1) return;
+    const act = acts[actIdx];
+    
+    const stepIdx = act.steps.findIndex(s => s.id === stepId);
+    if (stepIdx === -1) return;
+    const step = act.steps[stepIdx];
+    
+    if (!confirm("Converter este passo em uma nova Etapa? Uma 'Nova Atividade' será criada automaticamente dentro dela para estruturá-la.")) return;
+    
+    const newEtapaName = step.desc;
+    
+    const newAct = { 
+        id: 'act_' + Date.now() + Math.random().toString(36).substr(2, 5), 
+        name: 'Nova Atividade', 
+        sector: act.sector, 
+        etapa: newEtapaName, 
+        riskAssocs: [], 
+        noRisk: false, 
+        steps: [], 
+        time: { d: 0, h: 0, m: 0, s: 0 } 
+    };
+    
+    act.steps.splice(stepIdx, 1);
+    
+    let insertIdx = actIdx + 1;
+    for (let i = actIdx + 1; i < acts.length; i++) {
+        if ((acts[i].etapa || 'Etapas Não Classificadas') === (act.etapa || 'Etapas Não Classificadas')) {
+            insertIdx = i + 1;
+        } else {
+            break;
+        }
+    }
+    acts.splice(insertIdx, 0, newAct);
+    
+    saveDesc();
+    renderAll();
+};
+
+window.demoteEtapaToActivity = function(etapaName) {
+    if (etapaName === 'Etapas Não Classificadas') { showToast("Não é possível converter o grupo 'Etapas Não Classificadas'.", "warning"); return; }
+    if (!confirm(`Converter a etapa "${etapaName}" em uma Atividade? Suas atividades atuais se tornarão passos desta nova atividade.`)) return;
+    const acts = dbDesc.models[dbDesc.activeView].activities;
+    
+    const etapaActs = acts.filter(a => (a.etapa || 'Etapas Não Classificadas') === etapaName);
+    if (etapaActs.length === 0) return;
+    
+    let prevEtapaName = '';
+    const firstActIdx = acts.findIndex(a => a.id === etapaActs[0].id);
+    if (firstActIdx > 0) prevEtapaName = acts[firstActIdx - 1].etapa || 'Etapas Não Classificadas';
+    if (prevEtapaName === 'Etapas Não Classificadas') prevEtapaName = '';
+
+    const newAct = { id: 'act_' + Date.now() + Math.random().toString(36).substr(2, 5), name: etapaName, sector: etapaActs[0].sector, etapa: prevEtapaName, riskAssocs: [], noRisk: false, steps: [], time: { d: 0, h: 0, m: 0, s: 0 } };
+
+    etapaActs.forEach(a => {
+        newAct.steps.push({ id: 'step_' + Date.now() + Math.random().toString(36).substr(2, 5), desc: a.name, status: null });
+        if (a.steps && a.steps.length > 0) {
+            a.steps.forEach(s => { newAct.steps.push({ id: 'step_' + Date.now() + Math.random().toString(36).substr(2, 5), desc: s.desc, status: s.status }); });
+        }
+    });
+
+    for (let i = acts.length - 1; i >= 0; i--) {
+        if ((acts[i].etapa || 'Etapas Não Classificadas') === etapaName) { acts.splice(i, 1); }
+    }
+    
+    acts.splice(firstActIdx, 0, newAct);
+    saveDesc();
+    renderAll();
+};
+
+window.demoteEtapaToStep = function(etapaName) {
+    if (etapaName === 'Etapas Não Classificadas') { showToast("Não é possível converter o grupo 'Etapas Não Classificadas'.", "warning"); return; }
+    const acts = dbDesc.models[dbDesc.activeView].activities;
+    const etapaActs = acts.filter(a => (a.etapa || 'Etapas Não Classificadas') === etapaName);
+    if (etapaActs.length === 0) return;
+
+    const firstActIdx = acts.findIndex(a => a.id === etapaActs[0].id);
+    let targetAct = null;
+    if (firstActIdx > 0) targetAct = acts[firstActIdx - 1];
+
+    if (!targetAct) {
+        if (!confirm(`Converter a etapa "${etapaName}" em um Passo? Como não há etapa anterior, uma "Nova Etapa" com uma "Nova Atividade" será criada para absorvê-la.`)) return;
+        targetAct = { id: 'act_' + Date.now() + Math.random().toString(36).substr(2, 5), name: 'Nova Atividade', sector: etapaActs[0].sector, etapa: 'Nova Etapa', riskAssocs: [], noRisk: false, steps: [], time: { d: 0, h: 0, m: 0, s: 0 } };
+        acts.splice(firstActIdx, 0, targetAct);
+    } else {
+        if (!confirm(`Converter a etapa "${etapaName}" em um Passo? Ela será inserida como passo na atividade "${targetAct.name}".`)) return;
+    }
+
+    if (!targetAct.steps) targetAct.steps = [];
+    
+    targetAct.steps.push({ id: 'step_' + Date.now() + Math.random().toString(36).substr(2, 5), desc: etapaName, status: null });
+    etapaActs.forEach(a => {
+        targetAct.steps.push({ id: 'step_' + Date.now() + Math.random().toString(36).substr(2, 5), desc: a.name, status: null });
+        if (a.steps && a.steps.length > 0) {
+            a.steps.forEach(s => { targetAct.steps.push({ id: 'step_' + Date.now() + Math.random().toString(36).substr(2, 5), desc: s.desc, status: s.status }); });
+        }
+    });
+
+    for (let i = acts.length - 1; i >= 0; i--) {
+        if ((acts[i].etapa || 'Etapas Não Classificadas') === etapaName) { acts.splice(i, 1); }
+    }
+
+    saveDesc();
+    renderAll();
+};
 
 function getPopMediaHtml(url) {
     if (!url) return '';
@@ -1669,8 +1991,18 @@ function renderPop() {
     const container = document.getElementById('pop-tree-container');
     const acts = dbDesc.models[dbDesc.activeView].activities;
     
+    let html = '';
+    
+    if (isPopEditMode) {
+        html += `<div style="text-align: right; margin-bottom: 10px;">
+            <button class="btn-main no-print" style="background: var(--dark-accent); color: white; font-weight: bold; padding: 6px 15px;" onclick="quickAddEtapa()">+ Adicionar Nova Etapa</button>
+        </div>`;
+    }
+    
     if (acts.length === 0) {
         container.innerHTML = '<div class="empty-state" style="padding: 20px;">Nenhuma atividade cadastrada no modelo.</div>';
+        html += '<div class="empty-state" style="padding: 20px;">Nenhuma atividade cadastrada no modelo.</div>';
+        container.innerHTML = html;
         return;
     }
     
@@ -1681,46 +2013,104 @@ function renderPop() {
         groups[g].push(a);
     });
     
-    let html = '<div style="display: flex; flex-direction: column; gap: 15px;">';
+    html += '<div style="display: flex; flex-direction: column; gap: 15px;">';
     
+    const etapaColors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#d946ef', '#f97316'];
+    let groupIndex = 0;
+
     Object.keys(groups).forEach(groupName => {
-        html += `<div class="pop-group-container" style="background: #fdfdfd; border: 1px solid var(--border-color); border-radius: 8px; padding: 15px; transition: background-color 0.2s, border-color 0.2s;"
+        const gColor = groupName === 'Etapas Não Classificadas' ? '#94a3b8' : etapaColors[groupIndex % etapaColors.length];
+        if (groupName !== 'Etapas Não Classificadas') groupIndex++;
+
+        let groupTotalSteps = 0;
+        let groupAnsweredSteps = 0;
+        groups[groupName].forEach(a => {
+            if (a.steps) {
+                groupTotalSteps += a.steps.length;
+                groupAnsweredSteps += a.steps.filter(s => s.status).length;
+            }
+        });
+        const groupPct = groupTotalSteps > 0 ? Math.round((groupAnsweredSteps / groupTotalSteps) * 100) : 0;
+        const groupProgressHtml = groupTotalSteps > 0 ? `<span style="font-size: 0.7rem; background: ${gColor}20; color: ${gColor}; padding: 2px 8px; border-radius: 12px; font-weight: bold; margin-left: 8px; border: 1px solid ${gColor}40;">${groupPct}%</span>` : '';
+
+        html += `<div class="pop-group-container" style="background: #fdfdfd; border: 1px solid var(--border-color); border-left: 4px solid ${gColor}; border-radius: 8px; padding: 15px; transition: background-color 0.2s, border-color 0.2s;"
             ${isPopEditMode ? `draggable="true" ondragstart="onDragStartPopGroup(event, '${groupName}')" ondragend="this.classList.remove('dragging-group')" ondragover="onDragOverPopGroup(event)" ondragleave="onDragLeavePopGroup(event)" ondrop="onDropPopGroup(event, '${groupName}')"` : ''}>
-            <h4 style="font-size: 0.95rem; color: var(--dark-accent); margin-top: 0; margin-bottom: 12px; padding-bottom: 5px; border-bottom: 2px solid var(--primary-soft); display: flex; align-items: center; gap: 8px;">
-                📌 ${groupName}
+            <h4 style="font-size: 0.95rem; margin-top: 0; margin-bottom: 12px; padding-bottom: 5px; border-bottom: 2px solid ${gColor}40; display: flex; align-items: center; justify-content: space-between;">
+                <span style="display: flex; align-items: center; gap: 8px;">📌 <span style="background: ${gColor}20; color: ${gColor}; padding: 2px 10px; border-radius: 12px; font-size: 0.8rem; border: 1px solid ${gColor}40;">${groupName}</span>${groupProgressHtml}${isPopEditMode && groupName !== 'Etapas Não Classificadas' ? `<span style="cursor:pointer; color:#0284c7; font-size: 0.8rem; margin-left: 6px;" onclick="renameEtapa('${groupName}')" title="Renomear Etapa">✎</span>` : ''}</span>
+                ${isPopEditMode ? `
+                <div class="no-print" style="display: flex; gap: 6px; align-items: center;" onclick="event.stopPropagation()">
+                    <select class="btn-edit-action" style="padding: 2px 4px; font-size: 0.7rem; border: 1px solid #cbd5e1; background: #fff; cursor: pointer;" onchange="handleEtapaConversion(this, '${groupName}')">
+                        <option value="">Converter em...</option>
+                        <option value="atividade">Atividade</option>
+                        <option value="passo">Passo</option>
+                    </select>
+                    <button class="btn-main no-print" style="padding: 2px 8px; font-size: 0.7rem;" onclick="quickAddActivityToEtapa('${groupName}')">+ Adicionar Atividade</button>
+                </div>` : ''}
             </h4>
             <div style="display: flex; flex-direction: column; gap: 8px;">`;
             
         groups[groupName].forEach(a => {
             const isExpanded = !!expandedPopActivities[a.id];
             const stepCount = (a.steps && a.steps.length > 0) ? a.steps.length : 0;
+            const answeredCount = (a.steps && a.steps.length > 0) ? a.steps.filter(s => s.status).length : 0;
+            const actProgressHtml = stepCount > 0 ? `${answeredCount} de ${stepCount}` : `0 passos`;
             
+            let editActBtns = '';
+            if (isPopEditMode) {
+                editActBtns = `
+                    <div class="no-print" style="display:flex; gap:6px; margin-right:10px;" onclick="event.stopPropagation()">
+                        <select class="btn-edit-action" style="padding: 2px 4px; font-size: 0.7rem; border: 1px solid #cbd5e1; background: #fff; cursor: pointer;" onchange="handleActConversion(this, '${a.id}')">
+                            <option value="">Converter em...</option>
+                            <option value="etapa">Etapa</option>
+                            <option value="passo">Passo</option>
+                        </select>
+                    </div>
+                `;
+            }
+
             html += `<div class="pop-act-container" style="border: 1px solid var(--border-color); border-radius: 6px; background: #fff; transition: opacity 0.2s, transform 0.2s;"
                 ${isPopEditMode ? `draggable="true" ondragstart="onDragStartPopAct(event, '${a.id}')" ondragend="this.classList.remove('dragging-act')" ondragover="onDragOverPopAct(event)" ondragleave="onDragLeavePopAct(event)" ondrop="onDropPopAct(event, '${a.id}')"` : ''}>
                 <div style="padding: 10px 15px; background: #f8fafc; cursor: pointer; display: flex; justify-content: space-between; align-items: center; border-radius: ${isExpanded ? '5px 5px 0 0' : '5px'};" onclick="togglePopActivity('${a.id}')">
                     <div style="display: flex; align-items: center; gap: 10px; ${isPopEditMode ? 'cursor: grab;' : ''}">
+                        ${isPopEditMode ? editActBtns : ''}
                         <span style="font-weight: 700; color: var(--dark-accent); font-size: 0.8rem;">${isExpanded ? '▼' : '▶'}</span>
                         <span style="font-weight: 600; color: #334155; font-size: 0.85rem;">${a.name}</span>
                     </div>
-                    <span style="font-size: 0.65rem; background: #e2e8f0; color: #475569; padding: 2px 8px; border-radius: 12px; font-weight: 700;">${stepCount} passos</span>
+                    <span style="font-size: 0.65rem; background: #e2e8f0; color: #475569; padding: 2px 8px; border-radius: 12px; font-weight: 700;">${actProgressHtml}</span>
                 </div>`;
                 
             if (isExpanded) {
                 html += `<div style="padding: 15px; border-top: 1px solid var(--border-color); background: #fff;">`;
                 
-                if (isPopEditMode) {
-                    html += `<div class="input-row" style="margin-bottom: 15px;">
-                        <input type="text" placeholder="Atribuir a um Grupo de Etapa (Ex: Preparação)" value="${a.etapa || ''}" onchange="updateActEtapa('${a.id}', this.value)" style="padding: 6px; border: 1px dashed var(--accent); border-radius: 4px; font-size: 0.75rem; width: 100%; background: #f0f7ff;">
-                    </div>`;
-                }
-                
                 if (a.steps && a.steps.length > 0) {
                     html += `<div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px;">`;
                     a.steps.forEach((step, idx) => {
                         const st = step.status || null;
-                        const btnSim = `pop-status-btn ${st === 'sim' ? 'active-sim' : ''}`;
-                        const btnNao = `pop-status-btn ${st === 'nao' ? 'active-nao' : ''}`;
-                        const btnNa = `pop-status-btn ${st === 'na' ? 'active-na' : ''}`;
+                        
+                        let rowStatusClass = '';
+                        if (st) {
+                            if (['sim', 'nao', 'na'].includes(st)) rowStatusClass = `status-${st}`;
+                            else rowStatusClass = 'status-custom';
+                        }
+                        
+                        let buttonsHtml = '';
+                        if (!step.markers || step.markers.length === 0) {
+                            const btnSim = `pop-status-btn ${st === 'sim' ? 'active-sim' : ''}`;
+                            const btnNao = `pop-status-btn ${st === 'nao' ? 'active-nao' : ''}`;
+                            const btnNa = `pop-status-btn ${st === 'na' ? 'active-na' : ''}`;
+                            buttonsHtml = `
+                                <button class="${btnSim}" onclick="setPopStepStatus('${a.id}', '${step.id}', 'sim')">Sim</button>
+                                <button class="${btnNao}" onclick="setPopStepStatus('${a.id}', '${step.id}', 'nao')">Não</button>
+                                <button class="${btnNa}" onclick="setPopStepStatus('${a.id}', '${step.id}', 'na')">N/A</button>
+                            `;
+                        } else {
+                            step.markers.forEach(m => {
+                                const isActive = st === m;
+                                const btnClass = `pop-status-btn`;
+                                const activeStyle = isActive ? `background: var(--accent); color: #fff; border-color: var(--accent);` : '';
+                                buttonsHtml += `<button class="${btnClass}" style="${activeStyle}" onclick="setPopStepStatus('${a.id}', '${step.id}', '${m}')">${m}</button>`;
+                            });
+                        }
 
                         const mediaHtml = step.media ? `
                             <div class="media-hover-trigger no-print" style="margin-left: 6px; font-size: 1rem;" title="Ver Anexo (Clique para abrir na guia)" onclick="window.open('${step.media}', '_blank')">
@@ -1730,20 +2120,25 @@ function renderPop() {
 
                         let dragAttrs = isPopEditMode ? `draggable="true" ondragstart="onDragStartPop(event, '${a.id}', ${idx})" ondragend="this.classList.remove('dragging')" ondragover="onDragOverPop(event)" ondragenter="this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="onDropPop(event, '${a.id}', ${idx})"` : '';
 
-                        html += `<div class="pop-step-row status-${st || ''}" style="display: flex; align-items: flex-start; gap: 10px; padding: 8px; background: #f8fafc; border-radius: 4px; border: 1px solid #e2e8f0; transition: all 0.2s;" ${dragAttrs}>
+                        html += `<div class="pop-step-row ${rowStatusClass}" style="display: flex; align-items: flex-start; gap: 10px; padding: 8px; background: #f8fafc; border-radius: 4px; border: 1px solid #e2e8f0; transition: all 0.2s;" ${dragAttrs}>
                             ${isPopEditMode ? `<div class="pop-drag-handle" title="Segure para arrastar">☰</div>` : ''}
                             <div style="font-weight: bold; color: var(--accent); min-width: 20px;">${idx + 1}.</div>
                             <div style="flex: 1; font-size: 0.8rem; color: #334155; padding-top: 2px;">
                                 ${step.desc}
                                 ${mediaHtml}
                             </div>
-                            <div style="display: flex; gap: 4px; align-items: center;">
-                                <button class="${btnSim}" onclick="setPopStepStatus('${a.id}', '${step.id}', 'sim')">Sim</button>
-                                <button class="${btnNao}" onclick="setPopStepStatus('${a.id}', '${step.id}', 'nao')">Não</button>
-                                <button class="${btnNa}" onclick="setPopStepStatus('${a.id}', '${step.id}', 'na')">N/A</button>
+                            <div style="display: flex; gap: 4px; align-items: center; flex-wrap: wrap; justify-content: flex-end;">
+                                ${buttonsHtml}
                             </div>
                             ${isPopEditMode ? `
-                            <div style="display: flex; gap: 8px; margin-left: 10px; align-items: center;">
+                            <div class="no-print" style="display: flex; gap: 8px; margin-left: 10px; align-items: center;" onclick="event.stopPropagation()">
+                                <span style="cursor:pointer; color:#0284c7; font-size:1.1rem; line-height:1;" onclick="renamePopStep('${a.id}', '${step.id}')" title="Renomear Passo">✎</span>
+                                <span style="cursor:pointer; color:#d97706; font-size:1.1rem; line-height:1;" onclick="editPopStepMarkers('${a.id}', '${step.id}')" title="Personalizar Marcadores">🏷️</span>
+                                <select class="btn-edit-action" style="padding: 2px 4px; font-size: 0.7rem; border: 1px solid #cbd5e1; background: #fff; cursor: pointer;" onchange="handleStepConversion(this, '${a.id}', '${step.id}')">
+                                    <option value="">Converter em...</option>
+                                    <option value="etapa">Etapa</option>
+                                    <option value="atividade">Atividade</option>
+                                </select>
                                 <span style="cursor:pointer; color:#0284c7; font-size:1.1rem; line-height:1;" onclick="attachPopMedia('${a.id}', '${step.id}')" title="${step.media ? 'Alterar Anexo' : 'Anexar Mídia'}">🔗</span>
                                 <span style="cursor:pointer; color:#ef4444; font-size:1.1rem; line-height:1;" onclick="removePopStep('${a.id}', '${step.id}')" title="Excluir">✕</span>
                             </div>
@@ -1794,17 +2189,29 @@ function renderPrintPOPs() {
         
         act.steps.forEach((step, idx) => {
             const st = step.status;
-            const simStyle = st === 'sim' ? 'background: #22c55e; color: white; border-color: #22c55e;' : 'color: #94a3b8; border-color: #cbd5e1;';
-            const naoStyle = st === 'nao' ? 'background: #ef4444; color: white; border-color: #ef4444;' : 'color: #94a3b8; border-color: #cbd5e1;';
-            const naStyle = st === 'na' ? 'background: #64748b; color: white; border-color: #64748b;' : 'color: #94a3b8; border-color: #cbd5e1;';
+            let markersHtml = '';
+            
+            if (!step.markers || step.markers.length === 0) {
+                const simStyle = st === 'sim' ? 'background: #22c55e; color: white; border-color: #22c55e;' : 'color: #94a3b8; border-color: #cbd5e1;';
+                const naoStyle = st === 'nao' ? 'background: #ef4444; color: white; border-color: #ef4444;' : 'color: #94a3b8; border-color: #cbd5e1;';
+                const naStyle = st === 'na' ? 'background: #64748b; color: white; border-color: #64748b;' : 'color: #94a3b8; border-color: #cbd5e1;';
+                markersHtml = `
+                    <span style="font-size: 0.6rem; padding: 2px 8px; border: 1px solid; border-radius: 10px; ${simStyle}">Sim</span>
+                    <span style="font-size: 0.6rem; padding: 2px 8px; border: 1px solid; border-radius: 10px; ${naoStyle}">Não</span>
+                    <span style="font-size: 0.6rem; padding: 2px 8px; border: 1px solid; border-radius: 10px; ${naStyle}">N/A</span>
+                `;
+            } else {
+                step.markers.forEach(m => {
+                    const style = st === m ? 'background: var(--accent); color: white; border-color: var(--accent);' : 'color: #94a3b8; border-color: #cbd5e1;';
+                    markersHtml += `<span style="font-size: 0.6rem; padding: 2px 8px; border: 1px solid; border-radius: 10px; margin-left: 4px; ${style}">${m}</span>`;
+                });
+            }
 
             html += `<div style="display: flex; gap: 10px; align-items: flex-start; padding: 6px 0;">
                 <div style="width: 20px; font-weight: bold; color: var(--accent);">${idx + 1}.</div>
                 <div style="flex: 1; font-size: 0.85rem; color: #334155;">${step.desc}</div>
-                <div style="display: flex; gap: 5px;">
-                    <span style="font-size: 0.6rem; padding: 2px 8px; border: 1px solid; border-radius: 10px; ${simStyle}">Sim</span>
-                    <span style="font-size: 0.6rem; padding: 2px 8px; border: 1px solid; border-radius: 10px; ${naoStyle}">Não</span>
-                    <span style="font-size: 0.6rem; padding: 2px 8px; border: 1px solid; border-radius: 10px; ${naStyle}">N/A</span>
+                <div style="display: flex; gap: 5px; flex-wrap: wrap; justify-content: flex-end;">
+                    ${markersHtml}
                 </div>
             </div>`;
         });

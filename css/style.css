@@ -395,13 +395,15 @@ footer {
 /* Esmaece itens já clicados para dar destaque nos faltantes */
 .pop-step-row.status-sim,
 .pop-step-row.status-nao,
-.pop-step-row.status-na {
+.pop-step-row.status-na,
+.pop-step-row.status-custom {
     opacity: 0.5;
     filter: grayscale(0.5);
 }
 .pop-step-row.status-sim:hover,
 .pop-step-row.status-nao:hover,
-.pop-step-row.status-na:hover {
+.pop-step-row.status-na:hover,
+.pop-step-row.status-custom:hover {
     opacity: 1;
     filter: grayscale(0);
 }
@@ -409,6 +411,7 @@ footer {
 .pop-step-row.status-sim { background-color: #f0fdf4 !important; border-color: #bbf7d0 !important; }
 .pop-step-row.status-nao { background-color: #fef2f2 !important; border-color: #fecaca !important; }
 .pop-step-row.status-na { background-color: #f8fafc !important; border-color: #e2e8f0 !important; }
+.pop-step-row.status-custom { background-color: #eff6ff !important; border-color: #bfdbfe !important; }
 
 .pop-step-row.dragging { opacity: 0.5; }
 .pop-step-row.drag-over { border-top: 2px dashed var(--accent) !important; padding-top: 7px !important; }
