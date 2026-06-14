@@ -616,7 +616,7 @@ function gerarPDFIniciativa() {
                 if(i.meta) comp.push(`Meta: ${i.meta}`);
                 if(i.min) comp.push(`Mín: ${i.min}`);
                 if(i.max) comp.push(`Máx: ${i.max}`);
-                reportHtml += `<li><b>[${i.cat}]</b> ${i.val} ${i.uni ? '('+i.uni+')' : ''} ${i.isCritical ? '<span style="color:red">(Crítico)</span>' : ''} ${comp.length ? ' - ' + comp.join(' | ') : ''}</li>`;
+                reportHtml += `<li><b>[${i.cat}]</b> ${i.val} ${i.uni ? '('+i.uni+')' : ''} ${i.isCritical ? '<span style="color:#2563eb">(Apetite: ' + (i.apetiteLvl || i.meta || 'Médio/Moderado') + ')</span>' : ''} ${comp.length ? ' - ' + comp.join(' | ') : ''}</li>`;
             });
             reportHtml += `</ul>`;
         }

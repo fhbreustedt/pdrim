@@ -304,6 +304,13 @@ function toggleS4Input() {
     const cat = document.getElementById('s4_cat')?.value;
     const lblCrit = document.getElementById('lbl_s4_critical');
     if(lblCrit) lblCrit.style.display = (cat === 'KRI') ? 'flex' : 'none';
+    toggleS4Apetite();
+}
+
+window.toggleS4Apetite = function() {
+    const isCritical = document.getElementById('s4_critical')?.checked;
+    const lvl = document.getElementById('s4_apetite_lvl');
+    if (lvl) lvl.style.display = isCritical ? 'block' : 'none';
 }
 
 function toggleS5Icon() {
@@ -326,10 +333,15 @@ function addItem(sec, pref) {
     }
     
     let isCritical = false;
+    let apetiteLvl = '';
     if (pref === 's4') {
         const chk = document.getElementById('s4_critical');
         isCritical = chk && chk.checked;
             
+        if (isCritical) {
+            apetiteLvl = document.getElementById('s4_apetite_lvl')?.value || 'Médio/Moderado';
+        }
+
         const metaStr = document.getElementById('s4_meta')?.value;
         const uniStr = document.getElementById('s4_uni')?.value;
         
@@ -373,7 +385,7 @@ function addItem(sec, pref) {
         showToast(`Aviso: O item '${val}' já foi inserido nesta seção.`, "warning");
     }
 
-    const newItem = { cat: document.getElementById(pref+'_cat')?.value, val: val, icon: document.getElementById(pref+'_icon')?.value, type: typeVal, scope: scopeVal, min: document.getElementById(pref+'_min')?.value, max: document.getElementById(pref+'_max')?.value, cur: document.getElementById(pref+'_cur')?.value, meta: document.getElementById(pref+'_meta')?.value, uni: document.getElementById(pref+'_uni')?.value, isCritical: isCritical };
+    const newItem = { cat: document.getElementById(pref+'_cat')?.value, val: val, icon: document.getElementById(pref+'_icon')?.value, type: typeVal, scope: scopeVal, min: document.getElementById(pref+'_min')?.value, max: document.getElementById(pref+'_max')?.value, cur: document.getElementById(pref+'_cur')?.value, meta: document.getElementById(pref+'_meta')?.value, uni: document.getElementById(pref+'_uni')?.value, isCritical: isCritical, apetiteLvl: apetiteLvl };
 
     if (editState[pref] !== undefined && editState[pref] >= 0) {
         db[sec][editState[pref]] = newItem;
@@ -395,6 +407,7 @@ function addItem(sec, pref) {
     if (pref === 's4') {
         if (document.getElementById('s4_critical')) document.getElementById('s4_critical').checked = false;
         ['s4_min', 's4_max', 's4_cur', 's4_meta', 's4_uni'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+        const lvl = document.getElementById('s4_apetite_lvl'); if(lvl) { lvl.value = 'Baixo'; lvl.style.display = 'none'; }
         if(document.getElementById('s4_cat').value === 'INT') { const sel = document.getElementById('s4_val_sel'); if(sel) sel.value = ''; }
     }
     render(); save();
@@ -470,6 +483,10 @@ function editItem(sec, idx, pref) {
         document.getElementById('s4_uni').value = item.uni || '';
         const chk = document.getElementById('s4_critical');
         if (chk) { chk.checked = item.isCritical || false; }
+        if (item.isCritical) {
+            const lvl = document.getElementById('s4_apetite_lvl');
+            if (lvl) lvl.value = item.apetiteLvl || item.meta || 'Médio/Moderado';
+        }
         toggleS4Input(); // Atualiza a UI para especificidades de KRI/KPI
     } else if (pref === 's5') {
         if (document.getElementById('s5_icon')) { document.getElementById('s5_icon').value = item.icon; }
@@ -747,29 +764,18 @@ function render() {
         const isEditing = (editState['s4'] === i);
         const editClass = isEditing ? 'editing-card' : '';
         
-        if (it.cat === 'INT' || (it.cat === 'KRI' && it.isCritical)) {
-            const metaHtml = it.meta ? `<span style="color:#64748b; font-weight:bold; font-size:0.75rem; text-align:center;">Meta:<br/>${it.meta}${uni}</span>` : '';
-            document.getElementById('disp_int').innerHTML += `
-                <div class="hover-trigger ${editClass}" style="padding:4px; border-bottom:1px solid #fee2e2; display:flex; justify-content:space-between; align-items:center; gap:10px;">
-                    <span style="flex:1;">🚫 ${it.val}</span> 
-                    ${metaHtml}
-                    <div class="no-print hover-target" style="top: 50%; transform: translateY(-50%);">
-                        <span class="no-print" style="cursor:pointer; color:#0284c7; font-size:0.8rem;" onclick="editItem('sec4',${i},'s4')" title="Editar">✎</span>
-                        <span class="no-print" style="cursor:pointer; color:red; font-size:0.8rem;" onclick="remove('sec4',${i})" title="Excluir">✕</span>
-                    </div>
-                </div>`;
-        } else {
-            let details = '';
-            if (it.cur) details += `Atual: ${it.cur}`;
-            const minMax = [];
-            if (it.min) minMax.push(`Mín: ${it.min}`);
-            if (it.max) minMax.push(`Máx: ${it.max}`);
-            if (minMax.length > 0) {
-                if (details) details += '<br>';
-                details += minMax.join(' | ');
-            }
-            const metaHtml = it.meta ? `<div style="background: #e0f2fe; color: #0284c7; padding: 4px 8px; border-radius: 4px; font-weight: 700; font-size: 0.75rem; text-align: center; white-space: nowrap;">Meta:<br/> ${it.meta}</div>` : '';
-            
+        let details = '';
+        if (it.cur) details += `Atual: ${it.cur}`;
+        const minMax = [];
+        if (it.min) minMax.push(`Mín: ${it.min}`);
+        if (it.max) minMax.push(`Máx: ${it.max}`);
+        if (minMax.length > 0) {
+            if (details) details += '<br>';
+            details += minMax.join(' | ');
+        }
+        const metaHtml = it.meta ? `<div style="background: #e0f2fe; color: #0284c7; padding: 4px 8px; border-radius: 4px; font-weight: 700; font-size: 0.75rem; text-align: center; white-space: nowrap;">Meta:<br/> ${it.meta}</div>` : '';
+
+        if (it.cat === 'KPI' || it.cat === 'KRI') {
             document.getElementById(it.cat==='KPI'?'disp_s4_kpi':'disp_s4_kri').innerHTML += `
                 <div class="mini-card hover-trigger ${editClass}" style="display:flex; flex-direction:column; gap:8px;">
                     <b style="line-height:1.2; word-break:break-word;">${it.val}${uni}</b>
@@ -780,6 +786,26 @@ function render() {
                     <div class="no-print hover-target">
                         <span style="cursor:pointer; color:#0284c7; font-weight:bold;" onclick="editItem('sec4',${i},'s4')" title="Editar">✎</span>
                         <span style="cursor:pointer; color:red; font-weight:bold;" onclick="remove('sec4',${i})" title="Excluir">✕</span>
+                    </div>
+                </div>`;
+        }
+
+        if (it.cat === 'INT' || (it.cat === 'KRI' && it.isCritical)) {
+            const lvlText = it.apetiteLvl || it.meta || 'Médio/Moderado';
+            let lvlColor = '#64748b';
+            if (lvlText === 'Alto') lvlColor = '#ef4444';
+            else if (lvlText === 'Baixo') lvlColor = '#10b981';
+            else if (lvlText === 'Médio/Moderado') lvlColor = '#f59e0b';
+
+            const lvlHtml = `<span style="color:${lvlColor}; font-weight:bold; font-size:0.75rem; text-align:center; padding: 2px 8px; border: 1px solid ${lvlColor}; border-radius: 12px; background: #fff;">${lvlText}</span>`;
+            
+            document.getElementById('disp_int').innerHTML += `
+                <div class="hover-trigger ${editClass}" style="padding:4px 8px; border-bottom:1px solid #cbd5e1; display:flex; justify-content:space-between; align-items:center; gap:10px;">
+                    <span style="flex:1; font-size: 0.85rem;">📈 ${it.val}</span> 
+                    ${lvlHtml}
+                    <div class="no-print hover-target" style="top: 50%; transform: translateY(-50%);">
+                        <span class="no-print" style="cursor:pointer; color:#0284c7; font-size:0.8rem;" onclick="editItem('sec4',${i},'s4')" title="Editar">✎</span>
+                        <span class="no-print" style="cursor:pointer; color:red; font-size:0.8rem;" onclick="window.removeApetite(${i})" title="Remover">✕</span>
                     </div>
                 </div>`;
         }
@@ -981,6 +1007,56 @@ window.onclick = function(event) {
     document.querySelectorAll('.dropdown.show').forEach(d => d.classList.remove('show'));
   }
 }
+
+window.toggleApetiteForm = function() {
+    const form = document.getElementById('form_apetite');
+    if (form) {
+        if (form.style.display === 'none' || form.style.display === '') {
+            form.style.display = 'block';
+            window.populateApetiteKriSel();
+        } else {
+            form.style.display = 'none';
+        }
+    }
+};
+
+window.populateApetiteKriSel = function() {
+    const sel = document.getElementById('apetite_kri_sel');
+    if (!sel) return;
+    sel.innerHTML = '<option value="">-- Selecione um KRI --</option>';
+    let hasOptions = false;
+    db.sec4.forEach((it, i) => {
+        if (it.cat === 'KRI' && !it.isCritical) {
+            sel.innerHTML += `<option value="${i}">${it.val}</option>`;
+            hasOptions = true;
+        }
+    });
+    if (!hasOptions) {
+        sel.innerHTML = '<option value="">-- Nenhum KRI disponível --</option>';
+    }
+};
+
+window.addApetiteFromList = function() {
+    const sel = document.getElementById('apetite_kri_sel');
+    const lvl = document.getElementById('apetite_lvl_sel');
+    if (!sel || !lvl) return;
+    const idx = parseInt(sel.value);
+    if (isNaN(idx)) return showToast("Selecione um KRI.", "warning");
+    db.sec4[idx].isCritical = true;
+    db.sec4[idx].apetiteLvl = lvl.value;
+    window.toggleApetiteForm();
+    render(); save();
+};
+
+window.removeApetite = function(i) {
+    if (db.sec4[i].cat === 'KRI') {
+        db.sec4[i].isCritical = false;
+        db.sec4[i].apetiteLvl = '';
+        render(); save();
+    } else {
+        remove('sec4', i);
+    }
+};
 
 function save() { localStorage.setItem('pdrim_prep_v10_9', JSON.stringify(db)); localStorage.setItem('pdrim_exported', 'false'); updateBreadcrumbs(); }
 function exportJSON() { const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([JSON.stringify(db,null,2)],{type:'application/json'})); a.download=`pdrim_preparar_${new Date().toISOString().slice(0,10)}.json`; a.click(); localStorage.setItem('pdrim_exported', 'true'); }
