@@ -409,6 +409,71 @@ function selectActivity(id) {
     renderAll();
 }
 
+window.editActivity = function(actId, origin) {
+    // Inline edit when triggered from the activity list
+    if (origin === 'list') {
+        const titleEl = document.getElementById('act-title-' + actId);
+        const act = dbDesc.models[dbDesc.activeView].activities.find(a => a.id === actId);
+        if (!act) return;
+        if (!titleEl) {
+            // fallback: open detail panel
+            selectActivity(actId);
+            setTimeout(() => {
+                const el = document.getElementById('act-name-' + actId);
+                if (el) { el.focus(); try { el.select(); } catch (e) {} }
+            }, 80);
+            return;
+        }
+
+        // prevent multiple inputs
+        if (document.getElementById('act-inline-' + actId)) {
+            document.getElementById('act-inline-' + actId).focus();
+            return;
+        }
+
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.id = 'act-inline-' + actId;
+        input.value = act.name || '';
+        input.style.width = '100%';
+        input.style.padding = '4px';
+        input.style.fontSize = '0.75rem';
+        input.onblur = function() {
+            updateActName(actId, this.value);
+        };
+        input.onkeypress = function(e) { if (e.key === 'Enter') this.blur(); };
+
+        titleEl.innerHTML = '';
+        titleEl.appendChild(input);
+        setTimeout(() => { input.focus(); try { input.select(); } catch (e) {} }, 20);
+        return;
+    }
+
+    // default behavior: open detail panel and focus name field
+    selectActivity(actId);
+    setTimeout(() => {
+        const el = document.getElementById('act-name-' + actId);
+        if (el) {
+            el.focus();
+            try { el.select(); } catch (e) {}
+        }
+    }, 80);
+};
+
+window.renameActivityPop = function(actId) {
+    const act = dbDesc.models[dbDesc.activeView].activities.find(a => a.id === actId);
+    if (!act) return;
+    const newName = prompt('Novo nome para a Atividade:', act.name || '');
+    if (newName !== null && newName.trim() !== '' && newName.trim() !== act.name) {
+        act.name = newName.trim();
+        saveDesc();
+        renderPop();
+        renderActivityList();
+        renderMatrix();
+        renderHeatmap();
+    }
+};
+
 function selectRisk(id) {
     if (selectedRiskId === id) {
         selectedRiskId = null;
@@ -709,7 +774,25 @@ window.updateActSector = function(actId, val) {
     if (act) {
         act.sector = val.trim();
         saveDesc();
-        renderActivityList();
+        renderAll();
+    }
+};
+
+window.updateActEtapa = function(actId, val) {
+    const act = dbDesc.models[dbDesc.activeView].activities.find(a => a.id === actId);
+    if (act) {
+        act.etapa = val.trim();
+        saveDesc();
+        renderAll();
+    }
+};
+
+window.updateActName = function(actId, val) {
+    const act = dbDesc.models[dbDesc.activeView].activities.find(a => a.id === actId);
+    if (act) {
+        act.name = val.trim();
+        saveDesc();
+        renderAll();
     }
 };
 
@@ -717,6 +800,10 @@ function addActivity() {
     const inp = document.getElementById('new-activity-desc');
     const inpSec = document.getElementById('new-activity-sector');
     const inpEtapa = document.getElementById('new-activity-etapa');
+    const inpD = document.getElementById('new-activity-time-d');
+    const inpH = document.getElementById('new-activity-time-h');
+    const inpM = document.getElementById('new-activity-time-m');
+    const inpS = document.getElementById('new-activity-time-s');
     if (!inp || !inp.value.trim()) return;
     
     const newAct = {
@@ -727,13 +814,22 @@ function addActivity() {
         riskAssocs: [],
         noRisk: false,
         steps: [],
-        time: { d: 0, h: 0, m: 0, s: 0 }
+        time: {
+            d: inpD ? parseInt(inpD.value) || 0 : 0,
+            h: inpH ? parseInt(inpH.value) || 0 : 0,
+            m: inpM ? parseInt(inpM.value) || 0 : 0,
+            s: inpS ? parseInt(inpS.value) || 0 : 0
+        }
     };
     
     dbDesc.models[dbDesc.activeView].activities.push(newAct);
     inp.value = '';
-    if(inpSec) inpSec.value = '';
-    if(inpEtapa) inpEtapa.value = '';
+    if (inpSec) inpSec.value = '';
+    if (inpEtapa) inpEtapa.value = '';
+    if (inpD) inpD.value = '';
+    if (inpH) inpH.value = '';
+    if (inpM) inpM.value = '';
+    if (inpS) inpS.value = '';
     saveDesc();
     renderAll();
 }
@@ -819,12 +915,13 @@ function renderActivityList() {
             
             const timeStr = formatTimeStr(a.time);
             const sectorStr = a.sector ? ` <span style="font-size: 0.65rem; color: #0f172a; background: #e2e8f0; padding: 2px 6px; border-radius: 4px; margin-left: 6px;">🏢 ${a.sector}</span>` : '';
-            html += `<div class="mini-card hover-trigger" style="background:${bg}; color:${col}; cursor:pointer; align-items:center;" onclick="selectActivity('${a.id}')">
+            html += `<div id="act-card-${a.id}" class="mini-card hover-trigger" style="background:${bg}; color:${col}; cursor:pointer; align-items:center;" onclick="selectActivity('${a.id}')">
                 <div style="flex:1; display:flex; align-items:center;">
                     ${riskIcon}
-                    <b style="font-size:0.75rem; display:block; word-break:break-word; flex:1;">${a.name}${sectorStr}${timeStr}</b>
+                    <b id="act-title-${a.id}" style="font-size:0.75rem; display:block; word-break:break-word; flex:1;">${a.name}${sectorStr}${timeStr}</b>
                 </div>
                 <div class="no-print hover-target" style="top:50%; transform:translateY(-50%); right:4px; align-items:center;">
+                    <span style="cursor:pointer; color:#0284c7; font-size:1.05rem; line-height:1; margin-right:6px;" onclick="event.stopPropagation(); editActivity('${a.id}', 'list')" title="Editar">✎</span>
                     <span style="cursor:pointer; color:#ef4444; font-size:1.1rem; line-height:1;" onclick="event.stopPropagation(); removeRisk('${a.id}', '${selectedRiskId}')" title="Desvincular">✕</span>
                 </div>
             </div>`;
@@ -866,12 +963,13 @@ function renderActivityList() {
             
             const timeStr = formatTimeStr(a.time);
             const sectorStr = a.sector ? ` <span style="font-size: 0.65rem; color: #0f172a; background: #e2e8f0; padding: 2px 6px; border-radius: 4px; margin-left: 6px;">🏢 ${a.sector}</span>` : '';
-            html += `<div class="mini-card hover-trigger" style="background:${bg}; color:${col}; ${borderStyle} cursor:pointer; align-items:center;" onclick="selectActivity('${a.id}')">
+            html += `<div id="act-card-${a.id}" class="mini-card hover-trigger" style="background:${bg}; color:${col}; ${borderStyle} cursor:pointer; align-items:center;" onclick="selectActivity('${a.id}')">
                 <div style="flex:1; display:flex; align-items:center;">
                     ${riskIcon}
-                    <b style="font-size:0.75rem; display:block; word-break:break-word; flex:1;">${a.name}${sectorStr}${timeStr}</b>
+                    <b id="act-title-${a.id}" style="font-size:0.75rem; display:block; word-break:break-word; flex:1;">${a.name}${sectorStr}${timeStr}</b>
                 </div>
                 <div class="no-print hover-target" style="top:50%; transform:translateY(-50%); right:4px; align-items:center;">
+                    <span style="cursor:pointer; color:#0284c7; font-size:1.05rem; line-height:1; margin-right:6px;" onclick="event.stopPropagation(); editActivity('${a.id}', 'list')" title="Editar">✎</span>
                     <span style="cursor:pointer; color:#ef4444; font-size:1.1rem; line-height:1;" onclick="event.stopPropagation(); removeActivity('${a.id}')" title="Excluir">✕</span>
                 </div>
             </div>`;
@@ -998,6 +1096,16 @@ function renderRiskList() {
     if (timeContainer) {
         timeContainer.style.display = 'block';
         timeContainer.innerHTML = `
+            <div style="margin-bottom: 10px;">
+                <label style="font-size: 0.65rem; font-weight: 700; color: #0284c7; text-transform: uppercase; margin-bottom: 4px; display: block;">Nome da Atividade</label>
+                <input type="text" id="act-name-${act.id}" value="${act.name || ''}" onchange="updateActName('${act.id}', this.value)" style="width: 100%; padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.8rem;" placeholder="Nome da atividade">
+            </div>
+
+            <div style="margin-bottom: 10px;">
+                <label style="font-size: 0.65rem; font-weight: 700; color: #0284c7; text-transform: uppercase; margin-bottom: 4px; display: block;">Etapa</label>
+                <input type="text" id="act-etapa-${act.id}" value="${act.etapa || ''}" onchange="updateActEtapa('${act.id}', this.value)" style="width: 100%; padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.8rem;" placeholder="Etapa da atividade">
+            </div>
+
             <div style="margin-bottom: 10px;">
                 <label style="font-size: 0.65rem; font-weight: 700; color: #0284c7; text-transform: uppercase; margin-bottom: 4px; display: block;">Setor Responsável</label>
                 <input type="text" id="act-sector-${act.id}" value="${act.sector || ''}" onchange="updateActSector('${act.id}', this.value)" style="width: 100%; padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.8rem;" placeholder="Ex: Financeiro">
@@ -2064,6 +2172,7 @@ function renderPop() {
                             <option value="etapa">Etapa</option>
                             <option value="passo">Passo</option>
                         </select>
+                        <span style="cursor:pointer; color:#0284c7; font-size:0.95rem; line-height:1; align-self:center;" title="Editar Atividade" onclick="event.stopPropagation(); renameActivityPop('${a.id}')">✎</span>
                     </div>
                 `;
             }

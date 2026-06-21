@@ -159,11 +159,20 @@
                             <button class="btn-edit-action" id="btn-back-to-activities" style="display: none;" onclick="selectRisk(null)">Ver Todas</button>
                         </div>
                     </div>
-                    <div id="activity-add-wrapper" class="input-row no-print" style="margin-bottom: 10px;">
-                        <input type="text" id="new-activity-desc" placeholder="Nome da atividade..." class="flex-1" style="padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.8rem;" onkeypress="if(event.key==='Enter') addActivity()">
-                        <input type="text" id="new-activity-etapa" placeholder="Etapa (Opc)..." style="width: 90px; padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.8rem;" onkeypress="if(event.key==='Enter') addActivity()">
-                        <input type="text" id="new-activity-sector" placeholder="Setor..." style="width: 80px; padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.8rem;" onkeypress="if(event.key==='Enter') addActivity()">
-                        <button class="btn-main" style="padding: 6px 10px; font-size: 0.75rem;" onclick="addActivity()">Add</button>
+                    <div id="activity-add-wrapper" class="input-row no-print" style="margin-bottom: 10px; gap: 8px; flex-wrap: wrap; align-items: stretch;">
+                        <div style="display: flex; gap: 8px; flex-wrap: nowrap; align-items: center; width: 100%; overflow-x: auto;">
+                            <input type="text" id="new-activity-desc" placeholder="Nome da atividade..." class="flex-1" style="flex: 1 1 180px; min-width: 160px; padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.8rem;" onkeypress="if(event.key==='Enter') addActivity()">
+                            <input type="text" id="new-activity-etapa" placeholder="Etapa..." style="flex: 0 0 120px; min-width: 100px; padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.8rem;" onkeypress="if(event.key==='Enter') addActivity()">
+                            <input type="text" id="new-activity-sector" placeholder="Setor..." style="flex: 0 0 120px; min-width: 100px; padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.8rem;" onkeypress="if(event.key==='Enter') addActivity()">
+                            <button class="btn-main" style="flex: 0 0 auto; padding: 6px 10px; font-size: 0.75rem; white-space: nowrap;" onclick="addActivity()">Add</button>
+                        </div>
+                        <div style="display: flex; gap: 4px; flex-wrap: wrap; align-items: center; width: 100%;">
+                            <span style="font-size: 0.75rem; color: #475569; white-space: nowrap;">Tempo estimado:</span>
+                            <input type="number" id="new-activity-time-d" placeholder="Dias" min="0" style="width: 70px; padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.8rem;" onkeypress="if(event.key==='Enter') addActivity()">
+                            <input type="number" id="new-activity-time-h" placeholder="Horas" min="0" style="width: 70px; padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.8rem;" onkeypress="if(event.key==='Enter') addActivity()">
+                            <input type="number" id="new-activity-time-m" placeholder="Min" min="0" style="width: 70px; padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.8rem;" onkeypress="if(event.key==='Enter') addActivity()">
+                            <input type="number" id="new-activity-time-s" placeholder="Seg" min="0" style="width: 70px; padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.8rem;" onkeypress="if(event.key==='Enter') addActivity()">
+                        </div>
                     </div>
                     <div id="activity-link-wrapper" class="input-row no-print" style="display: none; margin-bottom: 10px;">
                         <select id="existing-act-sel" class="flex-1" style="padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.8rem;"></select>
