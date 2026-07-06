@@ -20,7 +20,7 @@ const quillResources = new Quill('#resources-editor-container', {
     ]}
 });
 
-const categories = { 'Capacitação': 'var(--color-capacitacao)', 'Gestão da Mudança': 'var(--color-mudanca)', 'Tecnologia': 'var(--color-tecnologia)', 'Implantação': 'var(--color-implantacao)', 'Definição de Riscos': 'var(--color-riscos)', 'Tratamento de Riscos': 'var(--color-riscos)', 'Metas e Indicadores': 'var(--color-metas)' };
+const categories = { 'Capacitação': 'var(--color-capacitacao)', 'Gestão da Mudança': 'var(--color-mudanca)', 'Tecnologia': 'var(--color-tecnologia)', 'Implantação': 'var(--color-implantacao)', 'Tratamento de Riscos': 'var(--color-riscos)', 'Metas e Indicadores': 'var(--color-metas)' };
 
 let flatActions = [];
 let currentView = 'cards';
