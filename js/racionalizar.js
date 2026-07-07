@@ -408,6 +408,7 @@ function editAction(id) {
 
     document.getElementById('editId').value = action.id;
     document.getElementById('title').value = action.title;
+    document.getElementById('responsible').value = action.responsible || '';
     document.getElementById('cat').value = action.cat;
     handleCategoryChange();
     const linkedItemSel = document.getElementById('linked-item');
@@ -468,6 +469,7 @@ function handleFormSubmit() {
     const editId = editIdElement ? editIdElement.value : '';
     const catElement = document.getElementById('cat');
     const catVal = catElement ? catElement.value : 'Outros';
+    const responsibleVal = document.getElementById('responsible').value.trim();
     
     const linkContainer = document.getElementById('link-container');
     let linkedItem = '';
@@ -498,7 +500,7 @@ function handleFormSubmit() {
         if (existing && existing.status) currentStatus = existing.status;
     }
 
-    const common = { id: editId ? parseInt(editId) : Date.now(), title: titleVal, cat: catVal, desc: quill.root.innerHTML, resources: quillResources.root.innerHTML, status: currentStatus, linkedItem: linkedItem, indicatorData: indicatorData };
+    const common = { id: editId ? parseInt(editId) : Date.now(), title: titleVal, responsible: responsibleVal, cat: catVal, desc: quill.root.innerHTML, resources: quillResources.root.innerHTML, status: currentStatus, linkedItem: linkedItem, indicatorData: indicatorData };
     
     if(editId) flatActions = flatActions.filter(a => a.id != editId);
     
@@ -753,11 +755,14 @@ function renderCards(data) {
             const indicatorIcon = getIndicatorHtml(act.indicatorData, act.linkedItem);
 
             html += `<div class="action-card-item hover-trigger ${editClass} ${deleteClass}" style="display: grid; grid-template-columns: auto 1fr auto auto; gap: 10px; align-items: center; padding: 12px 4px; border-bottom: ${borderStyle}; border-radius: 4px; position: relative; transition: all 0.3s;">
-                <div style="text-align: center; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                <div style="text-align: center; display: flex; align-items: center; justify-content: flex-start; gap: 8px;">
                     <input type="checkbox" class="delete-checkbox" value="${act.id}" onchange="handleCheckboxChange(this)" ${checkedAttr}>
                     <span class="status-dot ${act.status}" title="${act.status}" onclick="showStatusSelectInTable(${act.id}, '${act.status}', this)" style="cursor:pointer;"></span>
                 </div>
-                <div style="display: flex; flex-direction: column; padding-right: 10px;"><span style="font-size:0.8rem; line-height:1.3; font-weight: 600; color: var(--dark-accent); word-break: break-word;">${act.title}${linkedIcon}${indicatorIcon}</span></div>
+                <div style="display: flex; flex-direction: column; padding-right: 10px;">
+                    <span style="font-size:0.8rem; line-height:1.3; font-weight: 600; color: var(--dark-accent); word-break: break-word;">${act.title}${linkedIcon}${indicatorIcon}</span>
+                    ${act.responsible ? `<span style="font-size: 0.7rem; color: #64748b; margin-top: 2px;"><b>Resp:</b> ${act.responsible}</span>` : ''}
+                </div>
                 <span style="font-size:0.75rem; text-align: right; white-space: nowrap; ${startColor}">${s}</span>
                 <span style="font-size:0.75rem; text-align: right; white-space: nowrap; ${endColor}">${e}</span>
                 <div class="no-print hover-target" style="top: 50%; transform: translateY(-50%); right: 4px;">
@@ -861,7 +866,7 @@ function renderTimeline(data) {
                             <span style="color: ${catColorsDark[ev.cat] || 'var(--dark-accent)'}; font-size: 1.1rem; font-weight: 800;">${ev.title}${linkedIcon}${indicatorIcon}</span> 
                             <span class="no-print action-link" style="font-size:0.75rem; color: var(--accent); text-decoration: underline; cursor: pointer;" onclick="toggleCardExpansion(${index}, false)">(Ocultar detalhes)</span>
                         </div>
-                        <div style="margin-bottom: 12px;">
+                        <div style="margin-bottom: 8px;">
                             <span class="cat-badge" style="background: rgba(255,255,255,0.6);">${ev.cat}</span>
                         </div>
                         <div class="card-content">${ev.desc}</div>
@@ -870,7 +875,7 @@ function renderTimeline(data) {
                     <div class="timeline-text-view hover-trigger" id="text-view-${index}" style="display: ${timelineExpandedAll ? 'none' : 'flex'}; align-items: center; gap: 8px; width: 100%; position: relative;">
                         <span class="cat-badge" style="background: ${categories[ev.cat]}; flex-shrink: 0;">${ev.cat}</span>
                         <div style="font-weight: 600; color: var(--dark-accent); flex: 1; display: flex; align-items: center; min-width: 0; padding-right: 10px;">
-                            <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-right: 6px;">${actionTextLabel}: ${ev.title}</span>
+                            <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-right: 6px;">${actionTextLabel}: ${ev.title} ${ev.responsible ? `(Resp: ${ev.responsible})` : ''}</span>
                             <span style="flex-shrink: 0; display: flex; align-items: center;">${linkedIcon}${indicatorIcon} <span class="no-print action-link" style="font-size:0.75rem; color: var(--accent); text-decoration: underline; cursor: pointer; margin-left: 6px;" onclick="toggleCardExpansion(${index}, true)">(Ver detalhes)</span></span>
                         </div>
                         <div class="status-tag tag-${ev.status}" title="Alterar status" onclick="showStatusSelectInTimeline(${ev.id}, '${ev.status}', this)" style="margin-right: 35px; flex-shrink: 0;">
@@ -981,7 +986,10 @@ function renderTable(data) {
         const linkedName = getLinkedItemName(action.linkedItem);
         const linkedIcon = linkedName ? `<div class="custom-tooltip-container" style="display:inline-block; position:relative; margin-left:6px; font-size:0.85rem;" onclick="toggleTooltip(event, this)" onmouseenter="showTooltip(this)" onmouseleave="hideTooltip(this)"><span style="cursor:pointer;">🔗</span><div class="custom-tooltip no-print" style="font-weight:normal; line-height:1.4;"><b>Vínculo:</b><br>${linkedName}</div></div>` : '';
         const indicatorIcon = getIndicatorHtml(action.indicatorData, action.linkedItem);
-        const titleHtml = `<div>${action.title}${linkedIcon}${indicatorIcon}</div>`;
+        const titleHtml = `<div>
+            <span style="font-weight: 600;">${action.title}</span>${linkedIcon}${indicatorIcon}
+            ${action.responsible ? `<div style="font-size: 0.7rem; color: #64748b; margin-top: 2px;"><b>Resp:</b> ${action.responsible}</div>` : ''}
+        </div>`;
 
         root.insertAdjacentHTML('beforeend', `
             <tr class="action-row hover-trigger ${action.status} ${tableRowClass} ${tableRowDeleteClass}" id="row-${action.id}">

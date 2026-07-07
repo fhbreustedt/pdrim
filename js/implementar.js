@@ -283,7 +283,11 @@ function onLogRefChange() {
     if (refId) {
         let title = '';
         let sector = '';
-        if (type === 'acao') title = racData.find(a => a.id == refId)?.title;
+        if (type === 'acao') {
+            const racAction = racData.find(a => a.id == refId);
+            title = racAction?.title;
+            sector = racAction?.responsible;
+        }
         else if (type === 'atividade') {
             const act = descActivities.find(a => a.id == refId);
             title = act?.name;
