@@ -315,7 +315,7 @@ footer {
 .swot-box b { font-size: 0.6rem; color: #94a3b8; text-transform: uppercase; display: block; margin-bottom: 8px; }
 
 .timeline { display: flex; flex-wrap: wrap; gap: 15px; margin-top: 20px; justify-content: center; padding-bottom: 10px; }
-.t-step { flex: 1 1 180px; background: #fff; border: 1px solid var(--border); padding: 20px; border-radius: 10px; text-align: center; display: flex; flex-direction: column; gap: 5px; transition: 0.3s; }
+.t-step { flex: 1 1 120px; background: #fff; border: 1px solid var(--border); padding: 20px; border-radius: 10px; text-align: center; display: flex; flex-direction: column; gap: 5px; transition: 0.3s; }
 .t-step:last-child { border-style: dashed; }
 .t-step span { font-size: 0.7rem; color: #94a3b8; font-weight: 600; }
 .t-step strong { font-size: 1.1rem; color: var(--primary); text-transform: uppercase; letter-spacing: 0.05em; }

@@ -58,7 +58,7 @@ const PDRIM_KEYS = ['pdrim_prep_v10_9', 'pdrim_desc_v10_9', 'pdrim_rac_v10_9', '
 
 const EVAL_QUESTIONS = [
     { id: 1, etapa: 'PREPARAR', persp: 'REQ', dim: 'EFT', text: 'Foram declarados objetivos claros de melhoria de eficiência e mitigação de riscos.' },
-    { id: 2, etapa: 'DESCOBRIR', persp: 'REQ', dim: 'EFT', text: 'O mapa do processo atual sinaliza visualmente onde estão os riscos.' },
+    { id: 2, etapa: 'DESCOBRIR', persp: 'REQ', dim: 'EFT', text: 'O mapa do processo atual sinaliza visualmente a localização dos riscos.' },
     { id: 3, etapa: 'RACION.', persp: 'REQ', dim: 'EFT', text: 'O novo desenho integra os controles de risco diretamente no fluxo de trabalho.' },
     { id: 4, etapa: 'IMPLEMENT.', persp: 'REQ', dim: 'EFT', text: 'As ações de tratamento modificam o fluxo para eliminar a causa-raiz do risco.' },
     { id: 5, etapa: 'MONITOR.', persp: 'REQ', dim: 'EFT', text: 'Foram definidos indicadores formais para monitorar eficiência (KPIs) e riscos (KRIs).' },
